@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>极速卡丁车 🏎️</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-user-select:none; }
+  html,body { height:100%; overflow:hidden; font-family:"PingFang SC","Microsoft YaHei",sans-serif; }
+  body { background:linear-gradient(150deg,#1a237e 0%,#283593 50%,#1565c0 100%); }
+  .scr { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .hidden { display:none !important; }
+
+  h1.logo { font-size:52px; color:#fff; letter-spacing:6px; text-shadow:0 4px 0 #d84315,0 8px 20px rgba(0,0,0,.4); margin-bottom:6px; }
+  .sub { color:rgba(255,255,255,.85); font-size:14px; margin-bottom:24px; letter-spacing:1px; }
+
+  .panel { background:rgba(0,0,0,.32); border-radius:20px; padding:26px 32px; width:400px; max-width:92vw; backdrop-filter:blur(6px); box-shadow:0 10px 40px rgba(0,0,0,.35); }
+  .field { margin-bottom:14px; }
+  .field label { display:block; color:rgba(255,255,255,.8); font-size:13px; margin-bottom:6px; font-weight:700; }
+  .field input {
+    width:100%; padding:12px 16px; border-radius:12px; border:2px solid rgba(255,255,255,.25);
+    background:rgba(255,255,255,.12); color:#fff; font-size:17px; font-weight:700; outline:none; text-align:center; letter-spacing:2px;
+  }
+  .field input:focus { border-color:#ffd54f; }
+  .field input::placeholder { color:rgba(255,255,255,.4); letter-spacing:0; }
+
+  .btn {
+    display:block; width:100%; padding:14px 0; margin:8px 0; border:none; border-radius:14px;
+    font-size:18px; font-weight:900; cursor:pointer; letter-spacing:2px; transition:transform .1s;
+    color:#5d4037; background:linear-gradient(180deg,#ffe082,#ffb300); box-shadow:0 4px 0 #c68400;
+  }
+  .btn:active { transform:translateY(3px); box-shadow:0 1px 0 #c68400; }
+  .btn.blue { color:#fff; background:linear-gradient(180deg,#42a5f5,#1565c0); box-shadow:0 4px 0 #0d3c7d; }
+  .btn.green { color:#fff; background:linear-gradient(180deg,#66bb6a,#2e7d32); box-shadow:0 4px 0 #1b4d1e; }
+  .btn.gray { color:#fff; background:rgba(255,255,255,.2); box-shadow:0 4px 0 rgba(0,0,0,.25); font-size:15px; padding:11px 0; }
+  .btn:disabled { opacity:.45; cursor:not-allowed; }
+
+  .keys-help { margin-top:16px; color:rgba(255,255,255,.75); font-size:12.5px; line-height:2; text-align:center; }
+  kbd { background:rgba(255,255,255,.18); border-radius:5px; padding:2px 8px; font-family:inherit; font-weight:700; color:#fff; box-shadow:0 2px 0 rgba(0,0,0,.3); }
+  .ws-status { position:absolute; top:14px; right:18px; color:rgba(255,255,255,.8); font-size:13px; font-weight:700; }
+
+  /* 大厅 */
+  .room-code { font-size:64px; font-weight:900; color:#ffd54f; letter-spacing:12px; text-shadow:0 4px 14px rgba(0,0,0,.4); }
+  .room-tip { color:rgba(255,255,255,.8); font-size:13px; margin:4px 0 18px; }
+  .chips { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-bottom:20px; min-height:44px; }
+  .chip { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.14); padding:9px 16px; border-radius:30px; color:#fff; font-weight:800; font-size:15px; }
+  .chip .dot { width:14px; height:14px; border-radius:50%; box-shadow:0 0 8px currentColor; }
+  .empty-slot { width:120px; height:40px; border:2px dashed rgba(255,255,255,.25); border-radius:30px; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.35); font-size:13px; }
+
+  /* 比赛 HUD */
+  #cv { position:absolute; left:0; top:0; width:100%; height:100%; display:block; }
+
+  .track-picks { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:4px 0 10px; }
+  .track-chip {
+    padding:8px 16px; border-radius:20px; border:2px solid rgba(255,255,255,.3);
+    background:rgba(255,255,255,.12); color:#fff; font-weight:800; cursor:pointer; font-size:13px; transition:all .12s;
+  }
+  .track-chip:hover { background:rgba(255,255,255,.22); }
+  .track-chip.active { background:#ffd54f; color:#5d4037; border-color:#ffd54f; box-shadow:0 2px 10px rgba(255,213,79,.5); }
+
+  /* 第一人称驾驶舱（紧凑版，少挡路面视野） */
+  #cockpit { position:absolute; left:0; right:0; bottom:0; height:24vh; pointer-events:none; z-index:4; }
+  #cockpit .dash {
+    position:absolute; bottom:0; left:-6%; width:112%; height:9vh;
+    background:linear-gradient(180deg,#2e2e33 0%,#17171a 40%,#0a0a0c 100%);
+    border-radius:50% 50% 0 0 / 100% 100% 0 0;
+    box-shadow:0 -10px 34px rgba(0,0,0,.55), inset 0 3px 0 rgba(255,255,255,.09);
+  }
+  #cockpit .dash::before {
+    content:''; position:absolute; inset:0; border-radius:inherit;
+    background:repeating-linear-gradient(45deg,rgba(255,255,255,.035) 0 6px,transparent 6px 12px);
+  }
+  #cockpit .dash::after {  /* 仪表台氛围灯 */
+    content:''; position:absolute; top:6px; left:12%; width:76%; height:3px; border-radius:3px;
+    background:linear-gradient(90deg,transparent,rgba(64,196,255,.75),rgba(255,213,79,.75),transparent);
+    filter:blur(1px);
+  }
+  #wheel {
+    position:absolute; bottom:-9vh; left:50%; width:33vh; height:33vh;
+    transform:translateX(-50%);
+    filter:drop-shadow(0 12px 20px rgba(0,0,0,.65));
+  }
+
+  /* 技能按键提示 */
+  #skill-hints { position:absolute; bottom:112px; left:50%; transform:translateX(-50%); display:flex; gap:10px; z-index:6; pointer-events:none; }
+  .skill-hint {
+    background:linear-gradient(180deg,#ffd54f,#ffb300); color:#5d4037;
+    font-size:14px; font-weight:900; padding:8px 16px; border-radius:20px;
+    box-shadow:0 4px 12px rgba(0,0,0,.4); white-space:nowrap;
+    animation:hintBlink .45s infinite alternate;
+  }
+  .skill-hint kbd { background:rgba(0,0,0,.22); color:#fff; border-radius:5px; padding:1px 8px; }
+  @keyframes hintBlink { to { transform:scale(1.07); filter:brightness(1.18); } }
+
+  /* 撞墙红屏闪烁 */
+  #impact-vig {
+    position:absolute; inset:0; pointer-events:none; z-index:7; opacity:0;
+    background:radial-gradient(ellipse at center,transparent 52%,rgba(255,40,20,.6) 100%);
+  }
+  #impact-vig.flash { animation:vigFlash .35s ease-out; }
+  @keyframes vigFlash { 0%{opacity:1} 100%{opacity:0} }
+
+  /* 屏幕中央大字提示（踩道具/中招） */
+  #big-note {
+    position:absolute; top:24%; left:50%; transform:translateX(-50%); z-index:8;
+    font-size:30px; font-weight:900; color:#fff; letter-spacing:2px;
+    text-shadow:0 3px 10px rgba(0,0,0,.65);
+    background:rgba(0,0,0,.58); padding:14px 34px; border-radius:40px;
+    backdrop-filter:blur(5px); border:1px solid rgba(255,255,255,.2);
+    pointer-events:none; white-space:nowrap; animation:notePop .3s ease-out;
+  }
+  @keyframes notePop { from { transform:translateX(-50%) scale(.55); opacity:0; } }
+  .hud { position:absolute; z-index:5; pointer-events:none; }
+  #hud-tl { top:14px; left:16px; color:#fff; }
+  .hud-card {
+    background:linear-gradient(180deg,rgba(22,26,40,.74),rgba(10,12,20,.62));
+    border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:8px 16px;
+    font-weight:900; font-size:16px; margin-bottom:8px; color:#fff;
+    backdrop-filter:blur(6px); box-shadow:0 4px 14px rgba(0,0,0,.35);
+  }
+  .hud-card small { font-size:11px; font-weight:700; opacity:.75; display:block; }
+  #hud-tr { top:14px; right:16px; text-align:right; }
+  #mm { background:rgba(8,10,18,.62); border-radius:14px; border:1px solid rgba(255,255,255,.15); box-shadow:0 4px 14px rgba(0,0,0,.4); }
+  #hud-bl { bottom:16px; left:18px; color:#fff; }
+  #speed-num {
+    font-size:54px; font-weight:900; font-variant-numeric:tabular-nums;
+    background:linear-gradient(180deg,#fff 10%,#ffd54f 60%,#ff7043);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 3px 6px rgba(0,0,0,.65));
+  }
+  #speed-unit { font-size:13px; opacity:.8; }
+  #hud-bc { bottom:16px; left:50%; transform:translateX(-50%); display:flex; gap:14px; align-items:flex-end; }
+  #item-slot {
+    position:relative;
+    width:66px; height:66px; border-radius:16px; background:rgba(10,12,20,.6); border:3px solid rgba(255,255,255,.5);
+    display:flex; align-items:center; justify-content:center; font-size:36px;
+    backdrop-filter:blur(4px);
+  }
+  #item-slot::after {
+    content:'X'; position:absolute; right:-8px; top:-8px; width:20px; height:20px; border-radius:6px;
+    background:#ffd54f; color:#5d4037; font-size:12px; font-weight:900;
+    display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.4);
+  }
+  #item-slot.has { border-color:#ffd54f; box-shadow:0 0 18px rgba(255,213,79,.6); animation:itemPulse .8s infinite alternate; }
+  @keyframes itemPulse { to { transform:scale(1.07); } }
+  #gauge-wrap { width:220px; }
+  #gauge-label { color:#fff; font-size:12px; font-weight:800; margin-bottom:4px; text-shadow:0 1px 3px rgba(0,0,0,.6); }
+  #gauge-bg { height:20px; border-radius:10px; background:rgba(0,0,0,.55); overflow:hidden; border:2px solid rgba(255,255,255,.35); position:relative; }
+  #gauge-bg::after {
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:repeating-linear-gradient(90deg,transparent 0 calc(10% - 2px),rgba(0,0,0,.5) calc(10% - 2px) 10%);
+  }
+  #gauge-fill { height:100%; width:0%; border-radius:7px; background:linear-gradient(90deg,#29b6f6,#ffd54f,#ff7043); transition:width .1s; }
+  #gauge-fill.full { animation:fullGlow .4s infinite alternate; }
+  @keyframes fullGlow { to { filter:brightness(1.6); } }
+  #hud-br {
+    bottom:14px; right:16px; color:rgba(255,255,255,.8); font-size:11.5px; text-align:right; line-height:1.9;
+    background:rgba(10,12,20,.5); padding:8px 12px; border-radius:12px;
+    border:1px solid rgba(255,255,255,.12); backdrop-filter:blur(4px);
+  }
+
+  #cd { position:absolute; inset:0; z-index:20; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+  #cd-num { font-size:160px; font-weight:900; color:#fff; text-shadow:0 0 40px rgba(255,213,79,.9),0 8px 0 rgba(0,0,0,.3); animation:cdPop 1s infinite; }
+  @keyframes cdPop { 0%{transform:scale(1.4);opacity:0} 20%{transform:scale(1);opacity:1} 100%{transform:scale(.9);opacity:.8} }
+
+  .overlay {
+    position:absolute; inset:0; z-index:30; background:rgba(0,0,0,.6); backdrop-filter:blur(5px);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  .ov-emoji { font-size:80px; }
+  .ov-title { font-size:40px; font-weight:900; color:#fff; margin:8px 0; letter-spacing:3px; text-shadow:0 4px 12px rgba(0,0,0,.5); }
+  .ov-desc { color:rgba(255,255,255,.9); font-size:16px; margin-bottom:20px; text-align:center; line-height:1.8; }
+  .result-table { background:rgba(255,255,255,.08); border-radius:16px; padding:14px 22px; margin-bottom:22px; min-width:320px; }
+  .rt-row { display:flex; align-items:center; gap:12px; padding:8px 6px; color:#fff; font-weight:800; font-size:15px; border-bottom:1px solid rgba(255,255,255,.08); }
+  .rt-row:last-child { border-bottom:none; }
+  .rt-row.me { background:rgba(255,213,79,.18); border-radius:10px; }
+  .rt-place { width:40px; text-align:center; font-size:19px; }
+  .rt-name { flex:1; }
+  .rt-time { color:#ffe082; font-variant-numeric:tabular-nums; }
+  .ov-btns { display:flex; gap:12px; }
+  .ov-btns .btn { width:180px; margin:0; }
+
+  #toast {
+    position:fixed; top:14%; left:50%; transform:translateX(-50%) translateY(-10px);
+    background:rgba(0,0,0,.8); color:#fff; padding:11px 26px; border-radius:30px;
+    font-size:15px; font-weight:800; opacity:0; pointer-events:none; transition:all .25s; z-index:999; white-space:nowrap;
+  }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* 首页装饰：飞驰的小车 */
+  .road-deco { position:absolute; bottom:0; left:0; width:100%; height:88px; background:linear-gradient(180deg,#6d6d6d,#565656); border-top:7px solid #e53935; overflow:hidden; pointer-events:none; box-shadow:0 -10px 30px rgba(0,0,0,.3); }
+  .road-deco::before { content:''; position:absolute; top:42px; left:0; width:250%; height:6px; background:repeating-linear-gradient(90deg,#fff 0 42px,transparent 42px 96px); animation:roadMove 1s linear infinite; }
+  @keyframes roadMove { to { transform:translateX(-96px); } }
+  .deco-kart { position:absolute; bottom:16px; font-size:54px; transform:scaleX(-1); filter:drop-shadow(0 6px 6px rgba(0,0,0,.45)); animation:drive 6s linear infinite; }
+  .deco-kart.k2 { animation-duration:9s; animation-delay:-4s; font-size:40px; bottom:20px; }
+  .deco-kart.k3 { animation-duration:13s; animation-delay:-8s; font-size:34px; bottom:22px; }
+  @keyframes drive { from { left:-14%; } to { left:114%; } }
+  .deco-smoke { position:absolute; bottom:26px; width:16px; height:16px; border-radius:50%; background:rgba(255,255,255,.5); animation:smokePuff 6s linear infinite; }
+  @keyframes smokePuff { 0%{left:-16%;opacity:.7;transform:scale(.6)} 30%{opacity:.35} 60%{opacity:0;transform:scale(1.8)} 100%{left:112%;opacity:0} }
+</style>
+</head>
+<body>
+
+<!-- 加入页 -->
+<div id="scr-join" class="scr">
+  <div class="ws-status" id="ws-status">🔴 连接中…</div>
+  <h1 class="logo">🏎️ 极速卡丁车</h1>
+  <p class="sub">第一人称驾驶 · 漂移攒氮气 · 香蕉皮炸弹捣蛋 · 最多 5 人同场竞技</p>
+  <div class="panel">
+    <div class="field"><label>你的车手名</label><input id="in-name" maxlength="8" placeholder="比如：秋名山小羊"></div>
+    <div class="field"><label>房间号（和朋友约同一个数字）</label><input id="in-room" maxlength="6" placeholder="比如：1234"></div>
+    <div class="field"><label>选择赛道</label><div class="track-picks" id="tp-join"></div></div>
+    <button class="btn" id="btn-join">🏁 加入房间</button>
+    <button class="btn blue" id="btn-solo">🎯 单人练习（无需服务器）</button>
+    <div class="keys-help">
+      <kbd>↑</kbd> 加速 <kbd>↓</kbd> 刹车/倒车 <kbd>←→</kbd> 转向<br>
+      <kbd>Shift</kbd>+转向 漂移攒氮气 · <kbd>空格</kbd> 氮气爆发 · <kbd>X</kbd> 放香蕉/长按锁炸弹 · <kbd>C</kbd> 切换视角
+    </div>
+  </div>
+  <div class="road-deco">
+    <span class="deco-kart">🏎️</span>
+    <span class="deco-kart k2">🚙</span>
+    <span class="deco-kart k3">🏎️</span>
+    <span class="deco-smoke"></span>
+  </div>
+</div>
+
+<!-- 大厅页 -->
+<div id="scr-lobby" class="scr hidden">
+  <p class="sub" style="margin-bottom:2px">房间号</p>
+  <div class="room-code" id="lb-code">----</div>
+  <p class="room-tip" id="lb-share"></p>
+  <div class="chips" id="lb-chips"></div>
+  <div class="track-picks" id="tp-lobby"></div>
+  <div class="panel" style="padding:18px 26px;width:340px">
+    <button class="btn green" id="btn-start">🚦 开始比赛（3 圈定胜负）</button>
+    <button class="btn gray" id="btn-leave">离开房间</button>
+    <p class="room-tip" style="margin:8px 0 0;text-align:center" id="lb-status"></p>
+  </div>
+</div>
+
+<!-- 比赛页 -->
+<div id="scr-race" class="scr hidden" style="justify-content:flex-start">
+  <canvas id="cv"></canvas>
+  <!-- 第一人称驾驶舱：仪表台 + 方向盘 -->
+  <div id="cockpit" class="hidden">
+    <div class="dash"></div>
+    <svg id="wheel" viewBox="0 0 200 200">
+      <g id="wheel-g">
+        <circle cx="100" cy="100" r="86" fill="none" stroke="#0d0d0f" stroke-width="18"/>
+        <circle cx="100" cy="100" r="86" fill="none" stroke="#3d3d42" stroke-width="8"/>
+        <circle cx="100" cy="100" r="78" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="2"/>
+        <path d="M100 100 L42 140 M100 100 L158 140 M100 100 L100 32" stroke="#141416" stroke-width="15" stroke-linecap="round"/>
+        <path d="M100 100 L42 140 M100 100 L158 140 M100 100 L100 32" stroke="#3a3a40" stroke-width="6" stroke-linecap="round"/>
+        <circle cx="100" cy="100" r="27" fill="#1a1a1d" stroke="#44444a" stroke-width="3"/>
+        <text x="100" y="110" font-size="26" text-anchor="middle">🐑</text>
+      </g>
+    </svg>
+  </div>
+  <!-- 技能按键提示 & 撞击红屏 -->
+  <div id="skill-hints">
+    <div id="hint-nitro" class="skill-hint hidden">⚡ 氮气已满！按 <kbd>空格</kbd> 释放</div>
+    <div id="hint-item" class="skill-hint hidden"></div>
+  </div>
+  <div id="impact-vig"></div>
+  <div id="big-note" class="hidden"></div>
+  <div class="hud" id="hud-tl">
+    <div class="hud-card">🏅 第 <span id="h-rank">1</span> 名 <small>共 <span id="h-total">1</span> 人</small></div>
+    <div class="hud-card">🔄 圈数 <span id="h-lap">1/3</span> <small>⏱ <span id="h-time">0.0</span>s</small></div>
+  </div>
+  <div class="hud" id="hud-tr"><canvas id="mm" width="200" height="148"></canvas></div>
+  <div class="hud" id="hud-bl"><span id="speed-num">0</span><span id="speed-unit"> km/h</span></div>
+  <div class="hud" id="hud-bc">
+    <div id="item-slot"></div>
+    <div id="gauge-wrap">
+      <div id="gauge-label">⚡ 氮气（Shift+转向漂移充能）</div>
+      <div id="gauge-bg"><div id="gauge-fill"></div></div>
+    </div>
+  </div>
+  <div class="hud" id="hud-br">
+    <kbd>↑↓←→</kbd> 驾驶 <kbd>Shift</kbd> 漂移<br><kbd>空格</kbd> 氮气 <kbd>X</kbd> 香蕉·长按锁炸弹 <kbd>C</kbd> 视角
+  </div>
+  <div id="cd" class="hidden"><div id="cd-num">3</div></div>
+
+  <!-- 完赛等待 -->
+  <div id="ov-spec" class="overlay hidden">
+    <div class="ov-emoji">🏁</div>
+    <div class="ov-title" id="spec-title">完赛！</div>
+    <p class="ov-desc" id="spec-desc"></p>
+    <div class="ov-btns"><button class="btn gray" id="btn-spec-lobby">返回大厅</button></div>
+  </div>
+
+  <!-- 成绩单 -->
+  <div id="ov-result" class="overlay hidden">
+    <div class="ov-emoji">🏆</div>
+    <div class="ov-title">比赛成绩</div>
+    <div class="result-table" id="rt-body"></div>
+    <div class="ov-btns">
+      <button class="btn green hidden" id="btn-again">🔄 再来一局</button>
+      <button class="btn gray" id="btn-res-lobby">返回大厅</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="vendor/three.min.js"></script>
+<script>
+'use strict';
+/* ================================================================
+   极速卡丁车 —— Canvas 俯视角多人赛车
+   ================================================================ */
+
+/* ---------------- 基础工具 ---------------- */
+function $(id){ return document.getElementById(id); }
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function dist(ax,ay,bx,by){ const dx=ax-bx,dy=ay-by; return Math.sqrt(dx*dx+dy*dy); }
+function angDiff(a,b){ let d=(b-a)%(Math.PI*2); if(d>Math.PI)d-=Math.PI*2; if(d<-Math.PI)d+=Math.PI*2; return d; }
+function fmtT(ms){ const s=ms/1000; return s.toFixed(2)+'s'; }
+let toastTimer=null;
+function toast(msg){ const el=$('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),1800); }
+
+/* ---------------- 音效（WebAudio 合成） ---------------- */
+let audioCtx=null;
+function beep(freq,dur,type,vol){
+  try{
+    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type=type||'sine'; o.frequency.value=freq;
+    g.gain.setValueAtTime(vol||0.15,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime+dur);
+  }catch(e){ /* 忽略音频错误 */ }
+}
+function sfxCrash(){ beep(110,0.2,'sawtooth',0.22); setTimeout(()=>beep(65,0.28,'sawtooth',0.18),60); }
+function sfxNitro(){ beep(300,0.1,'square',0.12); setTimeout(()=>beep(600,0.12,'square',0.12),80); setTimeout(()=>beep(900,0.2,'square',0.1),160); }
+function sfxItem(){ beep(500,0.08,'triangle',0.15); setTimeout(()=>beep(750,0.1,'triangle',0.13),70); }
+
+let noteTimer=null;
+function bigNote(html){
+  const el=$('big-note');
+  el.innerHTML=html;
+  el.classList.remove('hidden');
+  el.style.animation='none'; void el.offsetWidth; el.style.animation='';
+  clearTimeout(noteTimer);
+  noteTimer=setTimeout(()=>el.classList.add('hidden'),1500);
+}
+function rr(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+/* ---------------- 赛道构建 ---------------- */
+const W=2300, H=1700, ROAD_HALF=68, LAPS=3;   // ROAD_HALF=68 → 路宽 136 ≈ 4 车道
+const TRACKS=[
+  {name:'绿野环道', sky:0x8ecae6, ground:0x3e8e41,
+   pts:[[420,380],[1050,270],[1680,330],[2020,620],[1960,980],[1620,1150],[1280,1040],[980,1180],[820,1420],[450,1380],[300,1000],[330,660]]},
+  {name:'落日沙滩', sky:0xf4a261, ground:0xd9b36c,
+   pts:[[400,300],[1500,260],[2050,500],[1900,900],[1400,780],[1200,1080],[1520,1380],[900,1450],[400,1200],[300,700]]},
+  {name:'雪山挑战', sky:0xa8d8ea, ground:0xe8f1f7,
+   pts:[[500,500],[1000,380],[1500,480],[1950,420],[2100,800],[1800,1150],[1300,1050],[900,1250],[450,1150],[280,800]]},
+  {name:'午夜环道', sky:0x232946, ground:0x37474f,
+   pts:[[400,400],[900,300],[1400,400],[1700,300],[2050,500],[1950,900],[1600,1000],[1700,1300],[1200,1400],[800,1250],[500,1350],[300,900]]},
+];
+let TRACK_IDX=0, TRACK=TRACKS[0], selTrack=0;
+let dense=[]; let N=0;
+function buildDense(){
+  dense=[];
+  const pts=TRACK.pts, n=pts.length, SUB=16;
+  for(let i=0;i<n;i++){
+    const p0=pts[(i-1+n)%n],p1=pts[i],p2=pts[(i+1)%n],p3=pts[(i+2)%n];
+    for(let s=0;s<SUB;s++){
+      const t=s/SUB,t2=t*t,t3=t2*t;
+      dense.push({
+        x:0.5*(2*p1[0]+(-p0[0]+p2[0])*t+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t2+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t3),
+        y:0.5*(2*p1[1]+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3)
+      });
+    }
+  }
+  N=dense.length;
+}
+buildDense();
+
+function pointAt(pr){
+  const idx=((pr%1)+1)%1*N, i0=Math.floor(idx)%N, i1=(i0+1)%N, f=idx-Math.floor(idx);
+  const a=dense[i0], b=dense[i1];
+  const x=a.x+(b.x-a.x)*f, y=a.y+(b.y-a.y)*f;
+  const ang=Math.atan2(b.y-a.y,b.x-a.x);
+  return {x,y,ang,nx:-(b.y-a.y),ny:(b.x-a.x)}; // n 未归一化，用时归一
+}
+function nearest(x,y){
+  let best=1e18,bi=0;
+  for(let i=0;i<N;i++){ const dx=dense[i].x-x,dy=dense[i].y-y,d=dx*dx+dy*dy; if(d<best){best=d;bi=i;} }
+  return {i:bi,d:Math.sqrt(best),pr:bi/N};
+}
+
+/* ---------------- 3D 场景（three.js · 第一人称） ---------------- */
+let renderer=null, scene=null, camera=null, threeOk=false;
+let myMesh=null, myMeshColor='', myNameSprite=null;
+const kartMeshes={}, nameSprites={}, boxMeshes=[], spritePools={};
+let skidGeo=null, skidBuf=null, skidSegs=0; const SKID_MAX=900;
+let fpMode=true;                       // true=第一人称驾驶舱 false=车尾追尾
+let flameTex=null; const emojiTexCache={};
+
+function emojiTexture(ch){
+  if(emojiTexCache[ch]) return emojiTexCache[ch];
+  const c=document.createElement('canvas'); c.width=c.height=64;
+  const g=c.getContext('2d');
+  g.font='46px sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+  g.fillText(ch,32,36);
+  emojiTexCache[ch]=new THREE.CanvasTexture(c);
+  return emojiTexCache[ch];
+}
+function spritePool(key){
+  if(spritePools[key]) return spritePools[key];
+  const ch=key==='banana'?'🍌':key==='bomb'?'💣':key==='boom'?'💥':key==='spark'?'✨':'💨';
+  const arr=[];
+  for(let i=0;i<28;i++){
+    const s=new THREE.Sprite(new THREE.SpriteMaterial({map:emojiTexture(ch),transparent:true,depthWrite:false}));
+    s.visible=false; scene.add(s); arr.push(s);
+  }
+  spritePools[key]=arr;
+  return arr;
+}
+function placePool(key,items){
+  const pool=spritePool(key);
+  for(let i=0;i<pool.length;i++){
+    const s=pool[i], it=items[i];
+    if(!it){ s.visible=false; continue; }
+    s.visible=true;
+    s.position.set(it.x,(it.h||5),it.y);
+    s.scale.set(it.s,it.s,1);
+    s.material.opacity=(it.o===undefined?1:it.o);
+  }
+}
+function makeNameSprite(name,color){
+  const c=document.createElement('canvas'); c.width=256; c.height=64;
+  const g=c.getContext('2d');
+  g.fillStyle='rgba(0,0,0,.62)'; g.fillRect(6,6,244,52);
+  g.strokeStyle=color; g.lineWidth=5; g.strokeRect(6,6,244,52);
+  g.fillStyle='#fff'; g.font='bold 30px sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+  g.fillText(name,128,34);
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false}));
+  s.scale.set(18,4.5,1);   // 名牌高度 ≈ 车身长度 1/6，小巧但可读
+  return s;
+}
+function makeKartMesh(color){
+  const g=new THREE.Group();
+  const mat=new THREE.MeshLambertMaterial({color:color});
+  const body=new THREE.Mesh(new THREE.BoxGeometry(30,6,16),mat); body.position.y=6; g.add(body);
+  const nose=new THREE.Mesh(new THREE.BoxGeometry(9,4,10),mat); nose.position.set(17,4,0); g.add(nose);
+  const stripe=new THREE.Mesh(new THREE.BoxGeometry(30,1,3),new THREE.MeshLambertMaterial({color:0xffffff})); stripe.position.set(0,9.4,0); g.add(stripe);
+  const wing=new THREE.Mesh(new THREE.BoxGeometry(3,7,24),new THREE.MeshLambertMaterial({color:0x1c1c1c})); wing.position.set(-17,11,0); g.add(wing);
+  const fwing=new THREE.Mesh(new THREE.BoxGeometry(3,3,20),new THREE.MeshLambertMaterial({color:0x1c1c1c})); fwing.position.set(20,3,0); g.add(fwing);
+  const wg=new THREE.CylinderGeometry(5,5,4,12); wg.rotateZ(Math.PI/2);
+  const wm=new THREE.MeshLambertMaterial({color:0x111111});
+  [[-11,-9],[-11,9],[12,-9],[12,9]].forEach(p=>{ const w=new THREE.Mesh(wg,wm); w.position.set(p[0],5,p[1]); g.add(w); });
+  const helm=new THREE.Mesh(new THREE.SphereGeometry(4.5,12,10),new THREE.MeshLambertMaterial({color:0xfafafa})); helm.position.set(-3,12,0); g.add(helm);
+  g.userData.helm=helm;
+  const flame=new THREE.Sprite(new THREE.SpriteMaterial({map:flameTex,transparent:true,depthWrite:false}));
+  flame.scale.set(16,16,1); flame.position.set(-23,7,0); flame.visible=false; g.add(flame);
+  g.userData.flame=flame;
+  g.scale.setScalar(0.62);   // 整车缩到约占跑道宽度 1/4
+  return g;
+}
+function pushQuad(pos,col,x1,z1,x2,z2,x3,z3,x4,z4,y,r,g,b){
+  // 无索引双三角形：(1,2,3)+(1,3,4)
+  pos.push(x1,y,z1, x2,y,z2, x3,y,z3,  x1,y,z1, x3,y,z3, x4,y,z4);
+  for(let k=0;k<6;k++) col.push(r,g,b);
+}
+function makeTrackMesh(){
+  // 一个网格画全部：柏油路 + 红白路肩 + 白色虚线中线 + 起点格纹
+  // 无索引 + 无光照 Basic 材质 + 关闭视锥裁剪 = 任何驱动下都保证可见
+  const pos=[],col=[];
+  const AY=0, CY=0.12, LY=0.24, SY=0.36;
+  for(let i=0;i<N;i++){
+    const p=dense[i], q=dense[(i+1)%N];
+    let nx=-(q.y-p.y), ny=(q.x-p.x); const L=Math.hypot(nx,ny)||1; nx/=L; ny/=L;
+    // 路面
+    pushQuad(pos,col,
+      p.x+nx*ROAD_HALF,p.y+ny*ROAD_HALF,
+      p.x-nx*ROAD_HALF,p.y-ny*ROAD_HALF,
+      q.x-nx*ROAD_HALF,q.y-ny*ROAD_HALF,
+      q.x+nx*ROAD_HALF,q.y+ny*ROAD_HALF,
+      AY, 0.34,0.34,0.37);
+    // 红白路肩（两侧）
+    const cr=(Math.floor(i/3)%2===0)?[0.80,0.10,0.08]:[0.93,0.93,0.93];
+    pushQuad(pos,col,
+      p.x+nx*ROAD_HALF,p.y+ny*ROAD_HALF, p.x+nx*(ROAD_HALF+5),p.y+ny*(ROAD_HALF+5),
+      q.x+nx*(ROAD_HALF+5),q.y+ny*(ROAD_HALF+5), q.x+nx*ROAD_HALF,q.y+ny*ROAD_HALF,
+      CY, cr[0],cr[1],cr[2]);
+    pushQuad(pos,col,
+      p.x-nx*(ROAD_HALF+5),p.y-ny*(ROAD_HALF+5), p.x-nx*ROAD_HALF,p.y-ny*ROAD_HALF,
+      q.x-nx*ROAD_HALF,q.y-ny*ROAD_HALF, q.x-nx*(ROAD_HALF+5),q.y-ny*(ROAD_HALF+5),
+      CY, cr[0],cr[1],cr[2]);
+    // 车道分隔线：4 车道 → 3 条白色虚线（画 2 段空 2 段）
+    if(Math.floor(i/2)%2===0){
+      [-34,0,34].forEach(lat=>{
+        pushQuad(pos,col,
+          p.x+nx*(lat-2.2),p.y+ny*(lat-2.2), p.x+nx*(lat+2.2),p.y+ny*(lat+2.2),
+          q.x+nx*(lat+2.2),q.y+ny*(lat+2.2), q.x+nx*(lat-2.2),q.y+ny*(lat-2.2),
+          LY, 0.96,0.96,0.96);
+      });
+    }
+  }
+  // 起点格纹线：8 列 × 2 行
+  const p=dense[0], q=dense[1];
+  let nx=-(q.y-p.y), ny=(q.x-p.x); const L=Math.hypot(nx,ny)||1; nx/=L; ny/=L;
+  const tx=(q.x-p.x)/L, ty=(q.y-p.y)/L;
+  for(let cCol=0;cCol<8;cCol++)for(let cRow=0;cRow<2;cRow++){
+    const w0=-ROAD_HALF+cCol*(ROAD_HALF*2/8), w1=w0+(ROAD_HALF*2/8);
+    const d0=(cRow-1)*9, d1=cRow*9;
+    const cc=((cCol+cRow)%2===0)?[0.95,0.95,0.95]:[0.10,0.10,0.10];
+    pushQuad(pos,col,
+      p.x+nx*w0+tx*d0, p.y+ny*w0+ty*d0,
+      p.x+nx*w1+tx*d0, p.y+ny*w1+ty*d0,
+      p.x+nx*w1+tx*d1, p.y+ny*w1+ty*d1,
+      p.x+nx*w0+tx*d1, p.y+ny*w0+ty*d1,
+      SY, cc[0],cc[1],cc[2]);
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+  const mesh=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide}));
+  mesh.frustumCulled=false;
+  return mesh;
+}
+let trackMesh=null, grassMat=null;
+function setTrack(idx){
+  TRACK_IDX=idx; TRACK=TRACKS[idx]||TRACKS[0];
+  buildDense();
+  buildBoxes();
+  if(scene){
+    if(trackMesh){ scene.remove(trackMesh); trackMesh.geometry.dispose(); }
+    trackMesh=makeTrackMesh(); scene.add(trackMesh);
+    if(grassMat) grassMat.color.set(TRACK.ground);
+    scene.background=new THREE.Color(TRACK.sky);
+    if(scene.fog) scene.fog.color.set(TRACK.sky);
+  }
+  renderTrackChips();
+}
+function renderTrackChips(){
+  ['tp-join','tp-lobby'].forEach(id=>{
+    const box=$(id); if(!box) return;
+    box.innerHTML='';
+    TRACKS.forEach((t,i)=>{
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='track-chip'+(i===TRACK_IDX?' active':'');
+      b.textContent=t.name;
+      b.onclick=()=>{
+        if(id==='tp-lobby'&&phase==='lobby'){ setTrack(i); sendNet({t:'track',idx:i}); toast('🛣️ 赛道切换：'+t.name); }
+        else if(id==='tp-join'){ selTrack=i; setTrack(i); }
+      };
+      box.appendChild(b);
+    });
+  });
+}
+function initThree(){
+  renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+  renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+  scene=new THREE.Scene();
+  scene.background=new THREE.Color(TRACK.sky);
+  scene.fog=new THREE.Fog(TRACK.sky,700,2600);
+  camera=new THREE.PerspectiveCamera(75,1.77,1,8000);
+  scene.add(new THREE.HemisphereLight(0xffffff,0x3f7a3a,1.05));
+  const sun=new THREE.DirectionalLight(0xfff3cf,0.85); sun.position.set(700,1200,400); scene.add(sun);
+  grassMat=new THREE.MeshLambertMaterial({color:TRACK.ground});
+  const grass=new THREE.Mesh(new THREE.PlaneGeometry(7000,7000),grassMat);
+  grass.rotation.x=-Math.PI/2; grass.position.set(W/2,-0.6,H/2); scene.add(grass);
+  // 漂移胎印（动态线段）
+  skidBuf=new Float32Array(SKID_MAX*6);
+  skidGeo=new THREE.BufferGeometry();
+  skidGeo.setAttribute('position',new THREE.BufferAttribute(skidBuf,3));
+  skidGeo.setDrawRange(0,0);
+  const skidLine=new THREE.LineSegments(skidGeo,new THREE.LineBasicMaterial({color:0x151515,transparent:true,opacity:0.7}));
+  skidLine.position.y=0.35; scene.add(skidLine);
+  // 尾焰贴图
+  const fc=document.createElement('canvas'); fc.width=fc.height=64;
+  const fg=fc.getContext('2d');
+  const rg=fg.createRadialGradient(32,32,2,32,32,30);
+  rg.addColorStop(0,'#fff7ae'); rg.addColorStop(0.4,'#ffb300'); rg.addColorStop(1,'rgba(255,87,34,0)');
+  fg.fillStyle=rg; fg.fillRect(0,0,64,64);
+  flameTex=new THREE.CanvasTexture(fc);
+  threeOk=true;
+}
+
+/* 道具箱 */
+let boxes=[];
+function buildBoxes(){
+  boxes=[];
+  [0.10,0.28,0.46,0.64,0.82].forEach((pr,s)=>{
+    [-51,-17,17,51].forEach((lat,j)=>{
+      const p=pointAt(pr), nl=Math.hypot(p.nx,p.ny);
+      boxes.push({id:'b'+s+'_'+j, x:p.x+p.nx/nl*lat, y:p.y+p.ny/nl*lat, taken:false, respawn:0});
+    });
+  });
+}
+buildBoxes();
+
+/* ---------------- 游戏状态 ---------------- */
+const cv=$('cv');   // WebGL 画布（three.js 渲染器使用）
+const mm=$('mm'), mctx=mm.getContext('2d');
+let phase='join';           // join|lobby|countdown|racing|finished|result
+let solo=false, ws=null, wsOk=false;
+let myId=null, myColor='#e53935', myName='车手', roomCode='';
+let roster={};              // id -> {name,color}
+let me=null, remotes={}, bananas=[], effects=[], smokes=[], myBomb=null;
+let cdUntil=0, raceStart=0, finList=[], myPlace=0, raceOver=false;
+let camX=W/2, camY=H/2;
+let keys={}, lastFrame=performance.now(), stateAcc=0, bombSeq=0, gaugeFullShown=false;
+let wheelAng=0, wheelGEl=null;
+let lastImpact=0, shakeUntil=0, shakeMag=0;
+
+const MAXV=430, NITROV=660, REV=-110, ACCEL=340, BRAKE=520, TURN=2.9;
+const NICKS=['闪电羊','旋风猪','夜 racer','割草机','逮虾户','弯道王'];
+
+function makeMe(slot){
+  const cols4=[-51,-17,17,51];                 // 4 车道发车列
+  const row=Math.floor(slot/4), colI=slot%4;
+  const p=pointAt(0.985-row*0.014);
+  const lat=cols4[colI];
+  const nl=Math.hypot(p.nx,p.ny);
+  return {
+    x:p.x+p.nx/nl*lat, y:p.y+p.ny/nl*lat, a:p.ang, v:0, vd:p.ang,
+    num:(slot||0)+1,
+    gauge:0, nitroUntil:0, spinUntil:0, invulnUntil:0,
+    held:null, lap:0, pr:0.985-row*0.014, prevPr:0, cp:false,
+    finished:false, finTime:0, drift:false, prevWL:null, prevWR:null
+  };
+}
+
+function resetWorld(slot){
+  me=makeMe(slot||0);
+  remotes={}; bananas=[]; effects=[]; smokes=[]; myBomb=null;
+  cancelAim();
+  finList=[]; myPlace=0; raceOver=false; gaugeFullShown=false;
+  buildBoxes();
+  skidSegs=0;
+  if(skidGeo){ skidGeo.setDrawRange(0,0); skidGeo.attributes.position.needsUpdate=true; }
+  camX=me.x; camY=me.y;
+}
+
+/* ---------------- 网络 ---------------- */
+function wsUrl(){
+  if(location.protocol==='http:'||location.protocol==='https:')
+    return (location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws';
+  return 'ws://localhost:8001/ws';
+}
+function connectWS(){
+  try{ ws=new WebSocket(wsUrl()); }catch(e){ setWs(false); return; }
+  ws.onopen=()=>{ wsOk=true; setWs(true); };
+  ws.onclose=()=>{ wsOk=false; setWs(false);
+    if(phase==='lobby'){ toast('与服务器断开连接'); showJoin(); } };
+  ws.onerror=()=>{ wsOk=false; setWs(false); };
+  ws.onmessage=e=>{ let m; try{m=JSON.parse(e.data);}catch(err){return;} onMsg(m); };
+}
+function setWs(ok){ $('ws-status').textContent = ok?'🟢 服务器已连接':'🔴 服务器未连接（可单人练习）'; $('btn-join').disabled=!ok; }
+function sendNet(m){ if(wsOk&&ws) { try{ ws.send(JSON.stringify(m)); }catch(e){} } }
+
+function onMsg(m){
+  switch(m.t){
+    case 'joined':
+      myId=m.id; myColor=m.color; roomCode=m.room;
+      roster={}; m.players.forEach(p=>roster[p.id]={name:p.name,color:p.color});
+      if(m.track!=null) setTrack(m.track);
+      showLobby(m.started);
+      toast(m.msg);
+      break;
+    case 'track':
+      setTrack(m.idx|0);
+      break;
+    case 'players':
+      roster={}; m.players.forEach(p=>roster[p.id]={name:p.name,color:p.color});
+      if(phase==='lobby') renderChips(m.players.length>=5);
+      Object.keys(remotes).forEach(id=>{ if(!roster[id]) delete remotes[id]; });
+      break;
+    case 'err': toast('❌ '+m.msg); break;
+    case 'left':
+      delete remotes[m.id]; delete roster[m.id];
+      break;
+    case 'start':
+      rosterGrid=m.grid||[];
+      if(m.track!=null) setTrack(m.track);
+      enterRace(rosterGrid.indexOf(myId)>=0?rosterGrid.indexOf(myId):0);
+      break;
+    case 's': {
+      if(phase==='lobby'||phase==='join') return;
+      let k=remotes[m.id];
+      if(!k){ const r=roster[m.id]||{name:'?',color:'#999'};
+        k=remotes[m.id]={id:m.id,name:r.name,color:r.color,num:(r.name.charCodeAt(0)%9)+1,x:m.x,y:m.y,a:m.a,v:0,dr:0,nit:0,sp:0,lap:0,pr:0,bomb:null}; }
+      k.tx=m.x; k.ty=m.y; k.ta=m.a; k.v=m.v; k.dr=m.dr; k.nit=m.nit; k.sp=m.sp;
+      k.lap=m.lap; k.pr=m.pr; k.bomb=m.bomb||null; k.name=(roster[m.id]||k).name; k.color=(roster[m.id]||k).color;
+      break; }
+    case 'item':
+      if(m.k==='b') bananas.push({id:m.bid,x:m.x,y:m.y});
+      break;
+    case 'bgo':
+      bananas=bananas.filter(b=>b.id!==m.bid);
+      break;
+    case 'box': {
+      const b=boxes.find(x=>x.id===m.bid);
+      if(b){ b.taken=true; b.respawn=performance.now()+8000; }
+      break; }
+    case 'boom':
+      effects.push({x:m.x,y:m.y,t0:performance.now(),type:'boom'});
+      if(me&&m.id!==myId&&dist(me.x,me.y,m.x,m.y)<85) spinMe(false,'bomb');
+      break;
+    case 'hit': {
+      const k=remotes[m.id];
+      if(k){ k.spinUntil=performance.now()+1400; effects.push({x:k.x,y:k.y,t0:performance.now(),type:'boom'}); }
+      break; }
+    case 'fin':
+      finList.push({place:m.place,id:m.id,name:(roster[m.id]||{name:'?'}).name,timeMs:m.timeMs});
+      if(m.id===myId){ myPlace=m.place; showSpec(); }
+      break;
+    case 'raceOver':
+      raceOver=true;
+      setTimeout(showResult,1200);
+      break;
+    case 'lobby':
+      delete remotes[m.id];
+      break;
+    case 'reset':
+      showLobby(false);
+      break;
+  }
+}
+let rosterGrid=[];
+
+/* ---------------- 页面切换 ---------------- */
+function show(id){ ['scr-join','scr-lobby','scr-race'].forEach(s=>$(s).classList.toggle('hidden',s!==id)); }
+function showJoin(){ phase='join'; show('scr-join'); }
+function showLobby(started){
+  phase='lobby'; show('scr-lobby');
+  $('lb-code').textContent=roomCode;
+  $('lb-share').textContent=`朋友打开 http://${location.host||'localhost:8001'} 输入房间号 ${roomCode} 即可加入`;
+  const full=Object.keys(roster).length>=5;
+  renderChips(full);
+  $('btn-start').disabled=!!started;
+  $('lb-status').textContent=started?'比赛进行中，等待下一场…':`等待车手… ${Object.keys(roster).length}/5（人齐了就能开）`;
+}
+function renderChips(full){
+  const box=$('lb-chips'); box.innerHTML='';
+  Object.keys(roster).forEach(id=>{
+    const p=roster[id];
+    const chip=document.createElement('div'); chip.className='chip';
+    chip.innerHTML=`<span class="dot" style="background:${p.color};color:${p.color}"></span>${p.name}${id===myId?'（我）':''}`;
+    box.appendChild(chip);
+  });
+  const cnt=Object.keys(roster).length;
+  for(let i=cnt;i<5;i++){ const e=document.createElement('div'); e.className='empty-slot'; e.textContent='虚位以待'; box.appendChild(e); }
+  $('lb-status').textContent=`等待车手… ${cnt}/5（人齐了就能开，一个人也能跑图）`;
+}
+
+/* ---------------- 比赛进入/结束 ---------------- */
+function enterRace(slot){
+  resetWorld(slot);
+  phase='countdown';
+  cdUntil=performance.now()+4000;
+  raceStart=cdUntil;
+  show('scr-race');
+  $('ov-spec').classList.add('hidden');
+  $('ov-result').classList.add('hidden');
+  $('cd').classList.remove('hidden');
+}
+function finishRace(){
+  me.finished=true;
+  me.finTime=performance.now()-raceStart;
+  if(solo){ myPlace=1; finList=[{place:1,id:'me',name:myName,timeMs:me.finTime}]; setTimeout(showResult,800); }
+  else sendNet({t:'fin',timeMs:Math.round(me.finTime)});
+}
+function showSpec(){
+  if(solo) return;
+  $('spec-title').textContent=`🏁 完赛！第 ${myPlace} 名`;
+  $('spec-desc').innerHTML=`用时 <b style="color:#ffe082">${fmtT(me.finTime)}</b><br>等待其他车手冲线，或先回大厅`;
+  $('ov-spec').classList.remove('hidden');
+}
+function showResult(){
+  phase='result';
+  $('cd').classList.add('hidden');
+  const body=$('rt-body'); body.innerHTML='';
+  const medals=['🥇','🥈','🥉','4.','5.'];
+  const list=finList.slice().sort((a,b)=>a.place-b.place);
+  list.forEach(f=>{
+    const row=document.createElement('div');
+    row.className='rt-row'+(f.id===myId||f.id==='me'?' me':'');
+    row.innerHTML=`<span class="rt-place">${medals[f.place-1]||f.place}</span><span class="rt-name">${f.name}</span><span class="rt-time">${fmtT(f.timeMs)}</span>`;
+    body.appendChild(row);
+  });
+  if(!solo){ // 未完赛的车手
+    Object.keys(roster).forEach(id=>{
+      if(!list.find(f=>f.id===id)){
+        const row=document.createElement('div'); row.className='rt-row'+(id===myId?' me':'');
+        row.innerHTML=`<span class="rt-place">…</span><span class="rt-name">${roster[id].name}</span><span class="rt-time" style="opacity:.6">未完赛</span>`;
+        body.appendChild(row);
+      }
+    });
+  }
+  $('btn-again').classList.toggle('hidden',!solo);
+  $('btn-res-lobby').textContent=solo?'返回首页':'返回大厅';
+  $('ov-spec').classList.add('hidden');
+  $('ov-result').classList.remove('hidden');
+}
+
+/* ---------------- 输入 ---------------- */
+window.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT') return;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','ShiftLeft','ShiftRight'].includes(e.code)) e.preventDefault();
+  keys[e.code]=true;
+  if(!e.repeat){
+    if(e.code==='Space') tryNitro();
+    if(e.code==='KeyX'){
+      if(me&&me.held==='b') useBanana();
+      else if(me&&me.held==='m'&&!aiming) startAim();
+    }
+    if(e.code==='KeyC'){ fpMode=!fpMode; toast(fpMode?'🎥 第一人称视角':'🎥 车尾追尾视角'); }
+    if(e.code==='Escape'&&phase!=='join'&&phase!=='result'){ if(!solo&&phase!=='lobby'){ sendNet({t:'lobby'}); showLobby(false);} else if(!solo){ sendNet({t:'leave'}); showJoin(); } }
+  }
+});
+window.addEventListener('keyup',e=>{
+  keys[e.code]=false;
+  if(e.code==='KeyX'&&aiming) fireBomb();
+});
+window.addEventListener('blur',()=>{ keys={}; });
+
+function tryNitro(){
+  if(!me||phase==='result'||phase==='countdown') return;
+  const now=performance.now();
+  if(now<me.spinUntil) return;
+  if(me.gauge>=100){
+    me.gauge=0; me.nitroUntil=now+1500;
+    sfxNitro();
+    toast('🔥 氮气爆发！');
+  } else if(me.gauge>0){ toast('氮气不足（漂移攒满 100 再放）'); }
+}
+/* 🍌 香蕉皮：立即放置 */
+function useBanana(){
+  if(!me||me.held!=='b'||phase==='result'||phase==='countdown') return;
+  const bid=myId+'_'+(bombSeq++);
+  const bx=me.x-Math.cos(me.a)*26, by=me.y-Math.sin(me.a)*26;
+  bananas.push({id:bid,x:bx,y:by});
+  sendNet({t:'item',k:'b',bid,x:Math.round(bx),y:Math.round(by)});
+  sfxItem();
+  bigNote('🍌 香蕉皮已放置！');
+  me.held=null;
+}
+/* 💣 炸弹：按住 X 瞄准锁定，松开 X 发射追踪弹（不会炸到自己） */
+let aiming=false, aimTarget=null, lockSprite=null;
+function ringTexture(){
+  const c=document.createElement('canvas'); c.width=c.height=128;
+  const g=c.getContext('2d');
+  g.strokeStyle='#ff1744'; g.lineWidth=9;
+  g.beginPath(); g.arc(64,64,44,0,7); g.stroke();
+  g.lineWidth=7;
+  g.beginPath();
+  g.moveTo(64,2); g.lineTo(64,26); g.moveTo(64,102); g.lineTo(64,126);
+  g.moveTo(2,64); g.lineTo(26,64); g.moveTo(102,64); g.lineTo(126,64);
+  g.stroke();
+  return new THREE.CanvasTexture(c);
+}
+function startAim(){
+  if(phase==='result'||phase==='countdown') return;
+  if(!Object.keys(remotes).length){ bigNote('💣 没有可锁定的对手'); return; }
+  aiming=true;
+  if(!lockSprite){
+    lockSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:ringTexture(),transparent:true,depthWrite:false}));
+    scene.add(lockSprite);
+  }
+  sfxSelect2();
+}
+function sfxSelect2(){ beep(700,0.06,'sine',0.1); }
+function updateAim(){
+  if(!aiming) return;
+  const ids=Object.keys(remotes);
+  if(!ids.length||!me||me.held!=='m'){ cancelAim(); return; }
+  let best=null,bd=1e18;
+  ids.forEach(id=>{ const k=remotes[id]; const d=dist(me.x,me.y,k.x,k.y); if(d<bd){bd=d;best=id;} });
+  aimTarget=best;   // 持续锁定最近的对手
+}
+function cancelAim(){
+  aiming=false; aimTarget=null;
+  if(lockSprite) lockSprite.visible=false;
+}
+function fireBomb(){
+  const target=aimTarget;
+  cancelAim();
+  if(!me||me.held!=='m'||!target||!remotes[target]) return;   // 目标消失则保留炸弹
+  const k=remotes[target];
+  myBomb={x:me.x+Math.cos(me.a)*22,y:me.y+Math.sin(me.a)*22,
+          vx:Math.cos(me.a)*320,vy:Math.sin(me.a)*320,
+          life:4,target:target,a:0};
+  me.held=null;
+  sfxItem();
+  bigNote('💣 锁定 '+k.name+'，导弹发射！');
+}
+
+/* ---------------- 道具/战斗逻辑 ---------------- */
+function spinMe(silent,reason){
+  const now=performance.now();
+  if(now<me.invulnUntil) return;
+  me.spinUntil=now+1400; me.invulnUntil=now+2800;
+  me.held=null;
+  cancelAim();
+  effects.push({x:me.x,y:me.y,t0:now,type:'boom'});
+  if(!silent&&!solo) sendNet({t:'hit'});
+  if(reason==='banana') bigNote('🍌 踩中香蕉皮！打滑转圈 💫');
+  else if(reason==='bomb') bigNote('💥 被炸弹炸中！打滑转圈 💫');
+  else bigNote('💫 打滑了！');
+}
+function rollItem(){
+  const r=Math.random();
+  if(solo){   // 单人没有锁定目标：只掉香蕉和氮气
+    if(r<0.55){ me.held='b'; sfxItem(); bigNote('📦 捡到 🍌 香蕉皮！按 X 放置'); }
+    else { me.gauge=Math.min(100,me.gauge+60); sfxNitro(); bigNote('⚡ 氮气 +60！'); }
+    return;
+  }
+  if(r<0.40){ me.held='b'; sfxItem(); bigNote('📦 捡到 🍌 香蕉皮！按 X 放置'); }
+  else if(r<0.75){ me.held='m'; sfxItem(); bigNote('📦 捡到  炸弹！按住 X 锁定、松开发射'); }
+  else { me.gauge=Math.min(100,me.gauge+60); sfxNitro(); bigNote('⚡ 氮气 +60！'); }
+}
+function boomBomb(x,y){
+  myBomb=null;
+  effects.push({x,y,t0:performance.now(),type:'boom'});
+  sendNet({t:'boom',x:Math.round(x),y:Math.round(y)});
+  // 注意：发射者自己免疫爆炸
+}
+
+/* ---------------- 物理更新 ---------------- */
+function updateMe(dt){
+  const now=performance.now();
+  const canDrive=(phase==='racing'||phase==='finished')&&now>=cdUntil;
+
+  if(now<me.spinUntil){
+    me.a+=10*dt;
+    me.v*=Math.pow(0.06,dt);
+    me.x+=Math.cos(me.vd)*me.v*dt; me.y+=Math.sin(me.vd)*me.v*dt;
+    me.drift=false;
+    return;
+  }
+  let thr=0,steer=0;
+  if(canDrive){
+    if(keys.ArrowUp) thr=1;
+    if(keys.ArrowDown) thr=-1;
+    if(keys.ArrowLeft) steer-=1;
+    if(keys.ArrowRight) steer+=1;
+  }
+  const nr=nearest(me.x,me.y);
+  me.drift=!!(canDrive&&(keys.ShiftLeft||keys.ShiftRight)&&steer!==0&&me.v>190);
+
+  me.a+=steer*TURN*dt*Math.min(1,Math.abs(me.v)/160)*(me.drift?1.75:1)*(me.v<-5?-1:1);
+
+  const vmax=(now<me.nitroUntil)?NITROV:MAXV;
+  if(now<me.nitroUntil) me.v+=1000*dt;
+  else if(thr>0) me.v+=(me.v<0?BRAKE:ACCEL)*dt;
+  else if(thr<0){ if(me.v>15) me.v-=BRAKE*dt; else me.v-=ACCEL*0.6*dt; }
+  else me.v-=me.v*1.1*dt;
+  me.v=clamp(me.v,REV,vmax);
+
+  me.vd+=angDiff(me.vd,me.a)*Math.min(1,dt*(me.drift?2.2:8));
+  if(me.drift){
+    me.gauge=Math.min(100,me.gauge+42*dt);
+    me.v*=(1-0.3*dt);
+    if(me.gauge>=100&&!gaugeFullShown){ gaugeFullShown=true; toast('⚡ 氮气已满！按空格爆发'); }
+    if(me.gauge<100) gaugeFullShown=false;
+    addSkid();
+  }
+  me.x+=Math.cos(me.vd)*me.v*dt;
+  me.y+=Math.sin(me.vd)*me.v*dt;
+
+  // 🧱 赛道边界墙：冲出路面会被弹回，蹭墙减速+火花
+  const LIM=ROAD_HALF-12;
+  const nb=nearest(me.x,me.y);
+  if(nb.d>LIM){
+    const c=dense[nb.i], ux=(me.x-c.x)/nb.d, uy=(me.y-c.y)/nb.d;
+    me.x=c.x+ux*LIM; me.y=c.y+uy*LIM;
+    const t2=dense[(nb.i+2)%N], tang=Math.atan2(t2.y-c.y,t2.x-c.x);
+    me.vd+=angDiff(me.vd,tang)*0.4;   // 车头被掰回赛道方向
+    me.v*=0.9;
+    if(Math.random()<0.7) smokes.push({x:me.x+ux*10,y:me.y+uy*10,t0:now,type:'spark',r:1.5+Math.random()*2});
+    // 💥 撞击效果：震屏 + 音效 + 火花爆溅 + 红屏闪烁（限车速且带冷却）
+    if(Math.abs(me.v)>120&&now-lastImpact>300){
+      lastImpact=now; shakeUntil=now+350; shakeMag=Math.min(10,Math.abs(me.v)/55);
+      sfxCrash();
+      const vg=$('impact-vig'); vg.classList.remove('flash'); void vg.offsetWidth; vg.classList.add('flash');
+      for(let s2=0;s2<8;s2++) smokes.push({x:me.x+ux*8,y:me.y+uy*8,t0:now+Math.random()*80,type:'spark',r:2+Math.random()*3});
+    }
+  }
+  me.x=clamp(me.x,20,W-20); me.y=clamp(me.y,20,H-20);
+
+  // 圈数
+  me.pr=nb.pr;
+  if(!me.finished){
+    if(me.pr>0.35&&me.pr<0.65) me.cp=true;
+    if(me.prevPr>0.7&&me.pr<0.3&&me.cp){
+      me.lap++; me.cp=false;
+      if(me.lap>=LAPS) finishRace();
+      else toast(`🔄 完成第 ${me.lap} 圈！`);
+    }
+  }
+  me.prevPr=me.pr;
+
+  // 与其他车手碰撞
+  Object.keys(remotes).forEach(id=>{
+    const k=remotes[id], d=dist(me.x,me.y,k.x,k.y);
+    if(d<26&&d>0.01){
+      const push=(26-d), ux=(me.x-k.x)/d, uy=(me.y-k.y)/d;
+      me.x+=ux*push; me.y+=uy*push; me.v*=0.92;
+    }
+  });
+}
+
+function addSkid(){
+  const px=-Math.sin(me.a), py=Math.cos(me.a);
+  const bx=me.x-Math.cos(me.a)*11, by=me.y-Math.sin(me.a)*11;
+  const L={x:bx+px*9,y:by+py*9}, R={x:bx-px*9,y:by-py*9};
+  if(me.prevWL&&skidSegs+2<=SKID_MAX){
+    let o=skidSegs*6;
+    skidBuf[o]=me.prevWL.x; skidBuf[o+1]=0; skidBuf[o+2]=me.prevWL.y;
+    skidBuf[o+3]=L.x; skidBuf[o+4]=0; skidBuf[o+5]=L.y;
+    skidSegs++;
+    o=skidSegs*6;
+    skidBuf[o]=me.prevWR.x; skidBuf[o+1]=0; skidBuf[o+2]=me.prevWR.y;
+    skidBuf[o+3]=R.x; skidBuf[o+4]=0; skidBuf[o+5]=R.y;
+    skidSegs++;
+    skidGeo.attributes.position.needsUpdate=true;
+    skidGeo.setDrawRange(0,skidSegs*2);
+  }
+  me.prevWL=L; me.prevWR=R;
+  if(Math.random()<0.5) smokes.push({x:L.x,y:L.y,t0:performance.now(),r:3+Math.random()*5});
+}
+
+function updateBomb(dt){
+  if(!myBomb) return;
+  const b=myBomb;
+  const k=remotes[b.target];
+  const spd=620;
+  if(k){   // 追踪锁定目标
+    const ta=Math.atan2(k.y-b.y,k.x-b.x);
+    const ca=Math.atan2(b.vy,b.vx);
+    const na=ca+angDiff(ca,ta)*Math.min(1,dt*4);
+    b.vx=Math.cos(na)*spd; b.vy=Math.sin(na)*spd;
+  }
+  b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt; b.a+=8*dt;
+  let boom=false;
+  if(k&&dist(b.x,b.y,k.x,k.y)<34) boom=true;
+  if(!boom) Object.keys(remotes).forEach(id=>{ const r=remotes[id]; if(dist(b.x,b.y,r.x,r.y)<30) boom=true; });
+  const nr=nearest(b.x,b.y);
+  if(boom||b.life<=0||nr.d>ROAD_HALF+50) boomBomb(b.x,b.y);
+}
+
+function updatePickups(dt){
+  const now=performance.now();
+  // 箱子复活
+  boxes.forEach(b=>{ if(b.taken&&now>b.respawn) b.taken=false; });
+  if(me.finished) return;
+  // 吃箱子
+  if(!me.held){
+    for(const b of boxes){
+      if(!b.taken&&dist(me.x,me.y,b.x,b.y)<30){
+        b.taken=true; b.respawn=now+8000;
+        sendNet({t:'box',bid:b.id});
+        rollItem();
+        break;
+      }
+    }
+  }
+  // 踩香蕉
+  for(const bn of bananas){
+    if(dist(me.x,me.y,bn.x,bn.y)<24){
+      bananas=bananas.filter(x=>x.id!==bn.id);
+      sendNet({t:'bgo',bid:bn.id});
+      spinMe(false,'banana');
+      break;
+    }
+  }
+}
+
+function updateRemotes(dt){
+  const f=Math.min(1,dt*12);
+  Object.keys(remotes).forEach(id=>{
+    const k=remotes[id];
+    if(k.tx===undefined) return;
+    k.x+=(k.tx-k.x)*f; k.y+=(k.ty-k.y)*f;
+    k.a+=angDiff(k.a,k.ta)*f;
+    if(k.dr&&Math.random()<0.3) smokes.push({x:k.x-Math.cos(k.a)*12,y:k.y-Math.sin(k.a)*12,t0:performance.now(),r:3+Math.random()*4});
+  });
+}
+
+/* ---------------- 渲染（3D 第一人称 / 追尾可切换） ---------------- */
+function render(){
+  const now=performance.now();
+  const vw=window.innerWidth, vh=window.innerHeight;
+  renderer.setSize(vw,vh,false);
+  camera.aspect=vw/vh;
+
+  // 特效老化
+  effects=effects.filter(e=>now-e.t0<500);
+  smokes=smokes.filter(s=>now-s.t0<600);
+
+  // 相机：第一人称驾驶舱 / 追尾
+  const boosting=now<me.nitroUntil;
+  camera.fov+=((boosting?92:75)-camera.fov)*0.12;
+  const fx=Math.cos(me.a), fz=Math.sin(me.a);
+  camera.up.set(0,1,0);
+  if(fpMode){
+    camera.position.set(me.x-fx*5,12.5,me.y-fz*5);
+    camera.lookAt(me.x+fx*90,5.5,me.y+fz*90);
+  }else{
+    camera.position.set(me.x-fx*100,52,me.y-fz*100);
+    camera.lookAt(me.x+fx*30,6,me.y+fz*30);
+  }
+  if(now<me.spinUntil) camera.rotateZ(Math.sin(now/45)*0.08);   // 打滑时镜头翻滚
+  if(now<shakeUntil){                                            // 撞墙震屏
+    const k=(shakeUntil-now)/350*shakeMag;
+    camera.position.x+=(Math.random()-0.5)*k;
+    camera.position.y+=(Math.random()-0.5)*k*0.6;
+    camera.position.z+=(Math.random()-0.5)*k;
+  }
+  camera.updateProjectionMatrix();
+
+  // 我的车 + 名牌
+  if(!myMesh||myMeshColor!==myColor){
+    if(myMesh) scene.remove(myMesh);
+    if(myNameSprite) scene.remove(myNameSprite);
+    myMesh=makeKartMesh(myColor); myMeshColor=myColor; scene.add(myMesh);
+    myNameSprite=makeNameSprite(myName,myColor); scene.add(myNameSprite);
+  }
+  myMesh.visible=true;
+  myMesh.userData.helm.visible=!fpMode;   // 第一人称藏头盔、露车头鼻翼
+  myMesh.position.set(me.x,0,me.y); myMesh.rotation.y=-me.a;
+  myMesh.userData.flame.visible=boosting;
+  myNameSprite.visible=!fpMode;
+  myNameSprite.position.set(me.x,16,me.y);
+
+  // 对手的车 + 名牌
+  Object.keys(remotes).forEach(id=>{
+    if(!kartMeshes[id]){ const m=makeKartMesh(remotes[id].color); kartMeshes[id]=m; scene.add(m); }
+    if(!nameSprites[id]){ nameSprites[id]=makeNameSprite(remotes[id].name||'?',remotes[id].color); scene.add(nameSprites[id]); }
+  });
+  Object.keys(kartMeshes).forEach(id=>{
+    const k=remotes[id], m=kartMeshes[id], ns=nameSprites[id];
+    if(!k){ m.visible=false; if(ns) ns.visible=false; return; }
+    m.visible=true; m.position.set(k.x,0,k.y); m.rotation.y=-k.a;
+    m.userData.flame.visible=!!k.nit;
+    if(ns){ ns.visible=true; ns.position.set(k.x,16,k.y); }
+  });
+
+  // 锁定环（瞄准中）
+  if(aiming&&aimTarget&&remotes[aimTarget]&&lockSprite){
+    const k=remotes[aimTarget];
+    const pul=1+Math.sin(now/80)*0.15;
+    lockSprite.visible=true;
+    lockSprite.scale.set(30*pul,30*pul,1);
+    lockSprite.position.set(k.x,26,k.y);
+  } else if(lockSprite) lockSprite.visible=false;
+
+  // 道具箱
+  boxes.forEach((b,i)=>{
+    if(!boxMeshes[i]){
+      boxMeshes[i]=new THREE.Mesh(new THREE.BoxGeometry(15,15,15),new THREE.MeshLambertMaterial({color:0xffd54f}));
+      scene.add(boxMeshes[i]);
+    }
+    const m=boxMeshes[i];
+    m.visible=!b.taken;
+    m.position.set(b.x,10+Math.sin(now/300+i)*2,b.y);
+    m.rotation.y=now/600+i;
+  });
+
+  // 香蕉 / 炸弹 / 爆炸 / 烟雾 / 火花
+  placePool('banana',bananas.map(b=>({x:b.x,y:b.y,s:16,h:5})));
+  const bombs=[];
+  if(myBomb) bombs.push({x:myBomb.x,y:myBomb.y,s:16,h:6});
+  Object.keys(remotes).forEach(id=>{ const b=remotes[id].bomb; if(b) bombs.push({x:b.x,y:b.y,s:16,h:6}); });
+  placePool('bomb',bombs);
+  placePool('boom',effects.map(e=>{ const age=(now-e.t0)/500; return {x:e.x,y:e.y,s:18+age*80,h:6,o:1-age}; }));
+  placePool('smoke',smokes.filter(s=>s.type!=='spark').map(s=>{ const age=(now-s.t0)/600; return {x:s.x,y:s.y,s:s.r*3*(1+age),h:4,o:(1-age)*0.55}; }));
+  placePool('spark',smokes.filter(s=>s.type==='spark').map(s=>{ const age=(now-s.t0)/600; return {x:s.x,y:s.y,s:s.r*3*(1-age*0.4),h:4,o:1-age}; }));
+
+  renderer.render(scene,camera);
+  drawMinimap();
+  drawHud(now);
+  drawCountdown(now);
+}
+
+function drawMinimap(){
+  const s=Math.min(mm.width/W,mm.height/H);
+  mctx.clearRect(0,0,mm.width,mm.height);
+  mctx.strokeStyle='rgba(255,255,255,.65)'; mctx.lineWidth=7; mctx.lineJoin='round';
+  mctx.beginPath();
+  dense.forEach((p,i)=>{ i?mctx.lineTo(p.x*s,p.y*s):mctx.moveTo(p.x*s,p.y*s); });
+  mctx.closePath(); mctx.stroke();
+  Object.keys(remotes).forEach(id=>{
+    const k=remotes[id];
+    mctx.fillStyle=k.color; mctx.beginPath(); mctx.arc(k.x*s,k.y*s,3.5,0,7); mctx.fill();
+  });
+  mctx.fillStyle='#fff'; mctx.strokeStyle=myColor; mctx.lineWidth=2;
+  mctx.beginPath(); mctx.arc(me.x*s,me.y*s,4,0,7); mctx.fill(); mctx.stroke();
+}
+
+function drawHud(now){
+  // 名次
+  const all=[{score:me.lap+me.pr,name:myName,me:true}];
+  Object.keys(remotes).forEach(id=>{ const k=remotes[id]; all.push({score:(k.lap||0)+(k.pr||0),name:k.name,me:false}); });
+  all.sort((a,b)=>b.score-a.score);
+  const rank=all.findIndex(a=>a.me)+1;
+  $('h-rank').textContent=rank;
+  $('h-total').textContent=all.length;
+  $('h-lap').textContent=Math.min(me.lap+1,LAPS)+'/'+LAPS;
+  $('h-time').textContent=phase==='countdown'?'0.0':((now-raceStart)/1000).toFixed(1);
+  $('speed-num').textContent=Math.round(Math.abs(me.v)*0.45);
+  const gf=$('gauge-fill');
+  gf.style.width=me.gauge+'%';
+  gf.classList.toggle('full',me.gauge>=100);
+  const slot=$('item-slot');
+  slot.textContent=me.held==='b'?'🍌':(me.held==='m'?'💣':'');
+  slot.classList.toggle('has',!!me.held);
+
+  // 驾驶舱 & 方向盘
+  const inRace=(phase==='countdown'||phase==='racing'||phase==='finished');
+  $('cockpit').classList.toggle('hidden',!(fpMode&&inRace));
+  if(fpMode&&inRace&&wheelGEl){
+    const target=((keys.ArrowLeft?-1:0)+(keys.ArrowRight?1:0))*(me.drift?150:95);
+    wheelAng+=(target-wheelAng)*0.25;
+    const jig=Math.abs(me.v)>320?(Math.random()-0.5)*1.4:0;
+    wheelGEl.setAttribute('transform','rotate('+(wheelAng+jig).toFixed(1)+' 100 100)');
+  }
+
+  // 技能释放按键提示
+  $('hint-nitro').classList.toggle('hidden',!(me.gauge>=100&&now>=me.nitroUntil));
+  const hiEl=$('hint-item');
+  if(aiming&&aimTarget&&remotes[aimTarget]){
+    hiEl.classList.remove('hidden');
+    hiEl.innerHTML='🎯 已锁定 <b>'+remotes[aimTarget].name+'</b> —— 松开 <kbd>X</kbd> 发射！';
+  } else if(me.held){
+    hiEl.classList.remove('hidden');
+    hiEl.innerHTML=me.held==='b'?'按 <kbd>X</kbd> 放置 🍌 香蕉皮':'按住 <kbd>X</kbd> 锁定 💣 炸弹';
+  } else hiEl.classList.add('hidden');
+}
+
+function drawCountdown(now){
+  const cd=$('cd');
+  if(phase==='countdown'){
+    cd.classList.remove('hidden');
+    const remain=(cdUntil-now)/1000;
+    $('cd-num').textContent=remain>3?'预备':(remain>0?Math.ceil(remain):'GO!');
+    if(remain<=0){ phase='racing'; raceStart=cdUntil; setTimeout(()=>cd.classList.add('hidden'),700); }
+  } else cd.classList.add('hidden');
+}
+
+/* ---------------- 主循环 ---------------- */
+function loop(){
+  requestAnimationFrame(loop);
+  const now=performance.now();
+  let dt=(now-lastFrame)/1000; lastFrame=now;
+  dt=Math.min(dt,0.05);
+
+  if(phase==='countdown'||phase==='racing'||phase==='finished'){
+    updateMe(dt);
+    updateAim();
+    updateBomb(dt);
+    updatePickups(dt);
+    updateRemotes(dt);
+    if(threeOk) render(); else { drawMinimap(); drawHud(now); drawCountdown(now); }
+    // 20Hz 状态广播
+    if(!solo){
+      stateAcc+=dt;
+      if(stateAcc>=0.05&&wsOk){
+        stateAcc=0;
+        sendNet({t:'s',x:Math.round(me.x),y:Math.round(me.y),a:+me.a.toFixed(2),
+          v:Math.round(me.v),dr:me.drift?1:0,nit:now<me.nitroUntil?1:0,
+          sp:now<me.spinUntil?1:0,lap:me.lap,pr:+me.pr.toFixed(3),
+          bomb:myBomb?{x:Math.round(myBomb.x),y:Math.round(myBomb.y),a:+myBomb.a.toFixed(1)}:0});
+      }
+    }
+  }
+}
+
+/* ---------------- UI 事件 ---------------- */
+$('btn-join').addEventListener('click',()=>{
+  if(!wsOk){ toast('服务器未连接，请确认 server.js 已启动'); return; }
+  myName=$('in-name').value.trim()||NICKS[Math.floor(Math.random()*NICKS.length)];
+  roomCode=$('in-room').value.trim()||'1234';
+  try{ localStorage.setItem('kart-name',myName); }catch(e){}
+  sendNet({t:'join',name:myName,room:roomCode});
+});
+$('btn-solo').addEventListener('click',()=>{
+  myName=$('in-name').value.trim()||'独行侠';
+  solo=true; myId='solo'; roster={solo:{name:myName,color:myColor}};
+  enterRace(0);
+});
+$('btn-start').addEventListener('click',()=>{ sendNet({t:'start'}); });
+$('btn-leave').addEventListener('click',()=>{ sendNet({t:'leave'}); showJoin(); });
+$('btn-spec-lobby').addEventListener('click',()=>{ sendNet({t:'lobby'}); showLobby(false); });
+$('btn-res-lobby').addEventListener('click',()=>{
+  if(solo){ solo=false; showJoin(); }
+  else { sendNet({t:'lobby'}); showLobby(false); }
+});
+$('btn-again').addEventListener('click',()=>{ if(solo) enterRace(0); });
+$('in-room').addEventListener('keydown',e=>{ if(e.key==='Enter') $('btn-join').click(); });
+$('in-name').addEventListener('keydown',e=>{ if(e.key==='Enter') $('btn-join').click(); });
+
+/* ---------------- 启动 ---------------- */
+window.addEventListener('error',e=>{ console.error(e.error||e.message); toast('⚠️ 页面异常: '+(e.message||'未知错误')); });
+try{ const n=localStorage.getItem('kart-name'); if(n) $('in-name').value=n; }catch(e){}
+wheelGEl=$('wheel-g');
+setWs(false);
+connectWS();
+try{ initThree(); }catch(e){ console.error('WebGL 初始化失败:',e); threeOk=false; }
+setTrack(selTrack);
+setInterval(()=>{ if(ws&&!wsOk&&phase==='join') connectWS(); },5000); // 断线重连
+loop();
+</script>
+</body>
+</html>
