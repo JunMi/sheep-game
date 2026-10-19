@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>解救小羊 🐑</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+  html, body { height: 100%; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+    background: linear-gradient(160deg, #a8e063 0%, #56ab2f 55%, #2e7d32 100%);
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #app { width: 100%; height: 100%; position: relative; }
+  .screen {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: opacity .3s;
+  }
+  .hidden { display: none !important; }
+
+  /* ---------- 标题页 ---------- */
+  .title-logo { font-size: 88px; animation: bounce 1.6s ease-in-out infinite; filter: drop-shadow(0 8px 12px rgba(0,0,0,.25)); }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-18px)} }
+  .title-name {
+    font-size: 54px; font-weight: 900; color: #fff; margin: 10px 0 6px;
+    text-shadow: 0 4px 0 #2e7d32, 0 8px 16px rgba(0,0,0,.3); letter-spacing: 8px;
+  }
+  .title-sub { color: rgba(255,255,255,.92); font-size: 15px; margin-bottom: 28px; letter-spacing: 1px; text-align: center; line-height: 1.7; padding: 0 20px; }
+  .btn {
+    display: block; width: 280px; padding: 15px 0; margin: 7px auto; border: none; border-radius: 50px;
+    font-size: 19px; font-weight: 800; cursor: pointer; letter-spacing: 2px;
+    transition: transform .12s, box-shadow .12s; color: #5d4037;
+    background: linear-gradient(180deg, #fff9c4, #ffe082);
+    box-shadow: 0 5px 0 #d4a017, 0 8px 16px rgba(0,0,0,.25);
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #d4a017; }
+  .btn.hell {
+    color: #fff; background: linear-gradient(180deg, #ff7043, #d84315);
+    box-shadow: 0 5px 0 #8d2a0e, 0 8px 16px rgba(0,0,0,.35);
+  }
+  .btn.ghost { background: rgba(255,255,255,.25); color: #fff; box-shadow: 0 4px 0 rgba(0,0,0,.15); width: 200px; padding: 11px 0; font-size: 15px; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+  .level-tag { font-size: 12px; display: block; font-weight: 400; margin-top: 2px; opacity: .75; }
+
+  /* ---------- 游戏页 ---------- */
+  #screen-game { justify-content: flex-start; }
+  #hud {
+    width: 100%; max-width: 980px; padding: 12px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  }
+  .hud-box {
+    background: rgba(0,0,0,.28); color: #fff; border-radius: 14px; padding: 7px 14px;
+    font-size: 14px; font-weight: 700; backdrop-filter: blur(4px); white-space: nowrap;
+  }
+  .hud-box .big { font-size: 19px; }
+  #hud-time.danger { background: rgba(211,47,47,.85); animation: pulse .6s infinite alternate; }
+  @keyframes pulse { to { transform: scale(1.07); } }
+  .prop-btn {
+    border: none; border-radius: 14px; padding: 9px 14px; font-size: 14px; font-weight: 800; cursor: pointer;
+    background: linear-gradient(180deg, #fff9c4, #ffe082); color: #5d4037;
+    box-shadow: 0 4px 0 #d4a017; transition: transform .1s; margin-left: 4px;
+  }
+  .prop-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #d4a017; }
+  .prop-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  #boardWrap { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  #board { position: relative; transform-origin: center center; }
+
+  .tile {
+    position: absolute; width: 64px; height: 64px; border-radius: 12px;
+    background: linear-gradient(180deg, #fffdf5, #f3e9d2);
+    border: 2px solid #d7c9a3;
+    box-shadow: 0 4px 6px rgba(0,0,0,.28), inset 0 -3px 0 rgba(0,0,0,.08);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px; cursor: pointer;
+    transition: transform .12s, filter .15s, opacity .25s;
+  }
+  .tile.blocked { filter: brightness(.62) saturate(.6); cursor: not-allowed; }
+  .tile.free:hover { transform: translateY(-3px) scale(1.05); }
+  .tile.selected {
+    border-color: #ffb300; background: linear-gradient(180deg, #fff8e1, #ffe082);
+    box-shadow: 0 0 0 3px #ffb300, 0 6px 14px rgba(0,0,0,.35);
+  }
+  .tile.shake { animation: shake .3s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+  .tile.hint { animation: hintPulse .5s 4 alternate; }
+  @keyframes hintPulse { to { box-shadow: 0 0 0 4px #40c4ff, 0 0 22px 6px #40c4ff; } }
+  .tile.ghost { position: fixed; margin: 0; pointer-events: none; z-index: 999; transition: none; }
+
+  /* ---------- 卡槽 ---------- */
+  #slotbarWrap { padding: 6px 0 16px; display: flex; justify-content: center; }
+  #slotbar {
+    display: flex; gap: 7px; padding: 10px 14px;
+    background: rgba(0,0,0,.30); border-radius: 18px; backdrop-filter: blur(4px);
+    box-shadow: inset 0 2px 8px rgba(0,0,0,.3);
+    transition: box-shadow .3s;
+  }
+  #slotbar.warn { box-shadow: inset 0 2px 8px rgba(0,0,0,.3), 0 0 0 3px #ff5252, 0 0 24px rgba(255,82,82,.7); }
+  .slotcell {
+    width: 64px; height: 64px; border: 2px dashed rgba(255,255,255,.4); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .slot-tile {
+    width: 58px; height: 58px; border-radius: 10px;
+    background: linear-gradient(180deg, #fffdf5, #f3e9d2);
+    border: 2px solid #d7c9a3;
+    box-shadow: 0 3px 5px rgba(0,0,0,.3), inset 0 -3px 0 rgba(0,0,0,.08);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px;
+    animation: slotIn .18s ease-out;
+  }
+  @keyframes slotIn { from { transform: scale(.4); } to { transform: scale(1); } }
+  .slot-tile.removing { animation: slotPop .28s ease-in forwards; }
+  @keyframes slotPop {
+    50% { transform: scale(1.25); filter: brightness(1.4); }
+    100% { transform: scale(0); opacity: 0; }
+  }
+
+  /* ---------- 结算页 ---------- */
+  #screen-end { background: rgba(0,0,0,.55); backdrop-filter: blur(6px); z-index: 50; overflow-y: auto; padding: 30px 0; }
+  .end-emoji { font-size: 84px; animation: bounce 1.4s infinite; }
+  .end-title { font-size: 38px; font-weight: 900; color: #fff; margin: 8px 0; text-shadow: 0 4px 12px rgba(0,0,0,.5); letter-spacing: 3px; }
+  .end-desc { color: rgba(255,255,255,.92); font-size: 16px; margin-bottom: 16px; text-align: center; line-height: 1.8; padding: 0 20px; }
+
+  #end-save-row { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
+  #name-input {
+    width: 170px; padding: 12px 16px; border-radius: 30px; border: none; font-size: 15px; font-weight: 700;
+    outline: none; text-align: center; color: #5d4037; background: #fffdf5;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,.2);
+  }
+  .btn.small { width: auto; padding: 12px 24px; font-size: 15px; margin: 0; display: inline-block; }
+
+  /* ---------- 排行榜 ---------- */
+  .lb-panel {
+    background: rgba(0,0,0,.35); border-radius: 20px; padding: 16px 20px; width: 380px; max-width: 92vw;
+    backdrop-filter: blur(4px); margin-bottom: 18px;
+  }
+  .lb-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+  .lb-tab {
+    flex: 1; padding: 9px 0; border: none; border-radius: 12px; cursor: pointer;
+    font-size: 14px; font-weight: 800; color: #fff; background: rgba(255,255,255,.15);
+  }
+  .lb-tab.active { background: linear-gradient(180deg, #ffd54f, #ffb300); color: #5d4037; }
+  .lb-row {
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px;
+    color: #fff; font-size: 14px; font-weight: 700;
+  }
+  .lb-row:nth-child(odd) { background: rgba(255,255,255,.06); }
+  .lb-row.me { background: rgba(255,213,79,.25); box-shadow: 0 0 0 1px #ffd54f; }
+  .lb-rank { width: 30px; text-align: center; font-size: 17px; }
+  .lb-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lb-time { font-variant-numeric: tabular-nums; color: #ffe082; }
+  .lb-date { font-size: 11px; opacity: .55; width: 76px; text-align: right; }
+  .lb-empty { color: rgba(255,255,255,.6); text-align: center; padding: 22px 0; font-size: 14px; }
+  #screen-lb h2 { color: #fff; font-size: 34px; letter-spacing: 4px; text-shadow: 0 4px 10px rgba(0,0,0,.4); margin-bottom: 18px; }
+
+  /* ---------- 提示气泡 ---------- */
+  #toast {
+    position: fixed; top: 16%; left: 50%; transform: translateX(-50%) translateY(-10px);
+    background: rgba(0,0,0,.78); color: #fff; padding: 12px 26px; border-radius: 30px;
+    font-size: 16px; font-weight: 700; opacity: 0; pointer-events: none; transition: all .3s; z-index: 999;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 标题页 -->
+  <section id="screen-title" class="screen">
+    <div class="title-logo">🐑</div>
+    <h1 class="title-name">解救小羊</h1>
+    <p class="title-sub">点击小动物放入底部卡槽，<b>三张相同</b>即可消除<br>⚠️ 卡槽塞满 <b>7 张</b>就前功尽弃啦！</p>
+    <button class="btn" id="btn-start-l1">开始游戏 · 第一关
+      <span class="level-tag">热身牧场 · 有手就行</span>
+    </button>
+    <button class="btn hell" id="btn-start-l2" disabled>第二关 · 地狱模式 🔥
+      <span class="level-tag" id="l2-lock-tip">通关第一关后解锁</span>
+    </button>
+    <button class="btn ghost" id="btn-open-lb">🏆 排行榜</button>
+  </section>
+
+  <!-- 游戏页 -->
+  <section id="screen-game" class="screen hidden">
+    <div id="hud">
+      <div class="hud-box" id="hud-level">第一关</div>
+      <div class="hud-box" id="hud-time">⏱ <span class="big" id="time-text">00:00</span></div>
+      <div class="hud-box" id="hud-left">🀄 剩余 <span class="big" id="left-text">0</span></div>
+      <div>
+        <button class="prop-btn" id="btn-shuffle">🔀 洗牌 (<span id="shuffle-count">3</span>)</button>
+        <button class="prop-btn" id="btn-hint">💡 提示 (<span id="hint-count">1</span>)</button>
+        <button class="prop-btn" id="btn-quit">🏠</button>
+      </div>
+    </div>
+    <div id="boardWrap"><div id="board"></div></div>
+    <div id="slotbarWrap"><div id="slotbar"></div></div>
+  </section>
+
+  <!-- 结算页 -->
+  <section id="screen-end" class="screen hidden">
+    <div class="end-emoji" id="end-emoji">🎉</div>
+    <h2 class="end-title" id="end-title">胜利！</h2>
+    <p class="end-desc" id="end-desc"></p>
+    <div id="end-save-row" class="hidden">
+      <input id="name-input" maxlength="8" placeholder="留下你的大名">
+      <button class="btn small" id="btn-save-score">🏆 保存成绩</button>
+    </div>
+    <div class="lb-panel" id="end-lb-panel">
+      <div class="lb-tabs" id="end-lb-title"></div>
+      <div id="end-lb-list"></div>
+    </div>
+    <button class="btn" id="btn-end-main">继续</button>
+    <button class="btn ghost" id="btn-end-home">回主页</button>
+  </section>
+
+  <!-- 排行榜页 -->
+  <section id="screen-lb" class="screen hidden">
+    <h2>🏆 排行榜</h2>
+    <div class="lb-panel">
+      <div class="lb-tabs">
+        <button class="lb-tab active" id="lb-tab-0">第一关 · 热身牧场</button>
+        <button class="lb-tab" id="lb-tab-1">第二关 · 地狱模式</button>
+      </div>
+      <div id="lb-list"></div>
+    </div>
+    <button class="btn ghost" id="btn-lb-back">← 返回</button>
+  </section>
+
+  <div id="toast"></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 配置 ================= */
+  var CELL = 64;          // 牌面像素尺寸
+  var HALF = CELL / 2;    // 半格（逻辑坐标单位）
+  var LAYER_DX = 7;       // 每层视觉偏移
+  var LAYER_DY = -7;
+  var MAX_SLOTS = 7;      // 卡槽数量
+
+  var ICONS_L1 = ['🐑', '🐄', '🐖'];
+  var ICONS_L2 = ['🐑', '🐄', '🐖', '🐔', '🐴', '🐶', '🐱', '🐰', '🦊', '🐻', '🐼', '🐸'];
+
+  var LEVELS = [
+    {
+      name: '第一关 · 热身牧场',
+      icons: ICONS_L1,
+      layers: [[6, 3]],                 // 单层 6x3 = 18 张（3 种动物 × 6 张）
+      timeLimit: 0,                     // 不限时
+      shuffles: 99, hints: 9
+    },
+    {
+      name: '第二关 · 地狱模式 🔥',
+      icons: ICONS_L2,
+      layers: [[10, 7], [7, 4], [4, 3], [2, 1]],  // 112 → 裁到 111 张（37 组三张）
+      timeLimit: 300,                   // 300 秒倒计时
+      shuffles: 3, hints: 1
+    }
+  ];
+
+  var SAVE_KEY = 'rescue-sheep-progress';
+  var LB_KEY = 'rescue-sheep-leaderboard-v1';
+  var NAME_KEY = 'rescue-sheep-last-name';
+
+  /* ================= 状态 ================= */
+  var state = {
+    levelIdx: 0, tiles: [], slots: [],
+    shuffles: 0, hints: 0,
+    elapsed: 0, remain: 0, timerId: null, over: false,
+    animating: false, newSlotIdx: -1
+  };
+
+  /* ================= 工具 ================= */
+  function $(id) { return document.getElementById(id); }
+  function shuffleArr(a) {
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+  function fmt(sec) {
+    sec = Math.max(0, Math.floor(sec));
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  function boardLeft() {
+    return state.tiles.filter(function (t) { return !t.removed; }).length;
+  }
+
+  var toastTimer = null;
+  function toast(msg) {
+    var el = $('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove('show'); }, 1800);
+  }
+
+  /* ================= 音效（WebAudio 合成） ================= */
+  var audioCtx = null;
+  function beep(freq, dur, type, vol) {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = type || 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol || 0.15, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(); o.stop(audioCtx.currentTime + dur);
+    } catch (e) { /* 忽略音频错误 */ }
+  }
+  function sfxSelect() { beep(660, 0.08, 'sine', 0.12); }
+  function sfxMatch()  { beep(880, 0.12, 'triangle', 0.18); setTimeout(function(){ beep(1320, 0.15, 'triangle', 0.15); }, 90); }
+  function sfxBad()    { beep(180, 0.15, 'sawtooth', 0.08); }
+  function sfxWin()    { [523,659,784,1047].forEach(function(f,i){ setTimeout(function(){ beep(f,0.25,'triangle',0.2); }, i*150); }); }
+  function sfxFail()   { [400,330,262,196].forEach(function(f,i){ setTimeout(function(){ beep(f,0.3,'sawtooth',0.1); }, i*200); }); }
+
+  /* ================= 关卡生成 ================= */
+  function genTiles(levelIdx) {
+    var cfg = LEVELS[levelIdx];
+    var cells = [];
+    var baseCols = cfg.layers[0][0], baseRows = cfg.layers[0][1];
+    var W = baseCols * 2, H = baseRows * 2;  // 半场单位
+
+    cfg.layers.forEach(function (lr, layer) {
+      var cols = lr[0], rows = lr[1];
+      var x0 = (W - cols * 2) / 2, y0 = (H - rows * 2) / 2;
+      for (var r = 0; r < rows; r++) {
+        for (var c = 0; c < cols; c++) {
+          cells.push({ x: x0 + c * 2, y: y0 + r * 2, layer: layer });
+        }
+      }
+    });
+
+    while (cells.length % 3 !== 0) cells.pop();  // 三消机制：总数必须是 3 的倍数
+
+    // 按「三张一组」发牌，保证每种动物数量都是 3 的倍数
+    var triples = cells.length / 3;
+    var pool = [];
+    for (var t = 0; t < triples; t++) {
+      var icon = cfg.icons[t % cfg.icons.length];
+      pool.push(icon, icon, icon);
+    }
+    shuffleArr(pool);
+
+    return cells.map(function (c, i) {
+      return { id: i, icon: pool[i], x: c.x, y: c.y, layer: c.layer, removed: false };
+    });
+  }
+
+  function isCovered(tile) {
+    for (var i = 0; i < state.tiles.length; i++) {
+      var t = state.tiles[i];
+      if (!t.removed && t.layer > tile.layer &&
+          Math.abs(t.x - tile.x) < 2 && Math.abs(t.y - tile.y) < 2) return true;
+    }
+    return false;
+  }
+
+  function freeTiles() {
+    return state.tiles.filter(function (t) { return !t.removed && !isCovered(t); });
+  }
+
+  /* ================= 渲染 ================= */
+  var boardEl = null;
+  function render() {
+    if (!boardEl) boardEl = $('board');
+    boardEl.innerHTML = '';
+    var maxX = 0, maxY = 0;
+
+    var sorted = state.tiles.slice().sort(function (a, b) {
+      return (a.layer - b.layer) || (a.y - b.y) || (a.x - b.x);
+    });
+
+    sorted.forEach(function (t) {
+      if (t.removed) return;
+      var el = document.createElement('div');
+      el.className = 'tile';
+      el.textContent = t.icon;
+      el.dataset.id = t.id;
+      var left = t.x * HALF + t.layer * LAYER_DX + 40;
+      var top  = t.y * HALF + t.layer * LAYER_DY + 40;
+      el.style.left = left + 'px';
+      el.style.top = top + 'px';
+      el.style.zIndex = t.layer * 1000 + t.y * 20 + t.x;
+      el.classList.add(isCovered(t) ? 'blocked' : 'free');
+      boardEl.appendChild(el);
+      maxX = Math.max(maxX, left + CELL);
+      maxY = Math.max(maxY, top + CELL);
+    });
+
+    boardEl.style.width = (maxX + 40) + 'px';
+    boardEl.style.height = (maxY + 40) + 'px';
+    fitBoard();
+    renderSlots();
+    updateHud();
+  }
+
+  function renderSlots() {
+    var bar = $('slotbar');
+    bar.innerHTML = '';
+    for (var i = 0; i < MAX_SLOTS; i++) {
+      var cell = document.createElement('div');
+      cell.className = 'slotcell';
+      cell.dataset.idx = i;
+      if (state.slots[i]) {
+        var t = document.createElement('div');
+        t.className = 'slot-tile';
+        t.textContent = state.slots[i].icon;
+        if (i === state.newSlotIdx) t.style.visibility = 'hidden';  // 等待飞入动画落位
+        cell.appendChild(t);
+      }
+      bar.appendChild(cell);
+    }
+    bar.classList.toggle('warn', state.slots.length >= 6);
+  }
+
+  function fitBoard() {
+    var wrap = $('boardWrap');
+    var s = Math.min(1,
+      (wrap.clientWidth - 16) / boardEl.offsetWidth,
+      (wrap.clientHeight - 16) / boardEl.offsetHeight);
+    boardEl.style.transform = 'scale(' + s + ')';
+  }
+
+  function updateHud() {
+    var cfg = LEVELS[state.levelIdx];
+    $('left-text').textContent = boardLeft();
+    $('shuffle-count').textContent = state.shuffles > 90 ? '∞' : state.shuffles;
+    $('hint-count').textContent = state.hints > 90 ? '∞' : state.hints;
+    $('btn-shuffle').disabled = state.shuffles <= 0;
+    $('btn-hint').disabled = state.hints <= 0;
+
+    var timeBox = $('hud-time');
+    if (cfg.timeLimit > 0) {
+      $('time-text').textContent = fmt(state.remain);
+      timeBox.classList.toggle('danger', state.remain <= 30);
+    } else {
+      $('time-text').textContent = fmt(state.elapsed);
+      timeBox.classList.remove('danger');
+    }
+  }
+
+  /* ================= 卡槽飞入动画 ================= */
+  function flyToSlot(fromRect, slotIdx, icon, done) {
+    var target = document.querySelector('.slotcell[data-idx="' + slotIdx + '"] .slot-tile');
+    if (!target || !target.animate) { if (target) target.style.visibility = 'visible'; done(); return; }
+    var toRect = target.getBoundingClientRect();
+
+    var ghost = document.createElement('div');
+    ghost.className = 'tile ghost';
+    ghost.textContent = icon;
+    ghost.style.left = fromRect.left + 'px';
+    ghost.style.top = fromRect.top + 'px';
+    ghost.style.width = fromRect.width + 'px';
+    ghost.style.height = fromRect.height + 'px';
+    ghost.style.fontSize = Math.round(fromRect.width * 0.56) + 'px';
+    document.body.appendChild(ghost);
+
+    var dx = toRect.left - fromRect.left + (toRect.width - fromRect.width) / 2;
+    var dy = toRect.top - fromRect.top + (toRect.height - fromRect.height) / 2;
+    var sc = toRect.width / fromRect.width;
+
+    var anim = ghost.animate([
+      { transform: 'translate(0,0) scale(1)' },
+      { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sc + ')' }
+    ], { duration: 220, easing: 'cubic-bezier(.4,0,.7,1)' });
+
+    anim.onfinish = function () {
+      ghost.remove();
+      target.style.visibility = 'visible';
+      done();
+    };
+  }
+
+  /* ================= 游戏流程 ================= */
+  function startLevel(idx) {
+    var cfg = LEVELS[idx];
+    state.levelIdx = idx;
+    state.tiles = genTiles(idx);
+    state.slots = [];
+    state.shuffles = cfg.shuffles;
+    state.hints = cfg.hints;
+    state.elapsed = 0;
+    state.remain = cfg.timeLimit;
+    state.over = false;
+    state.animating = false;
+    state.newSlotIdx = -1;
+
+    $('hud-level').textContent = cfg.name;
+    showScreen('screen-game');
+    render();
+
+    clearInterval(state.timerId);
+    state.timerId = setInterval(function () {
+      if (state.over) return;
+      state.elapsed++;
+      if (cfg.timeLimit > 0) {
+        state.remain--;
+        if (state.remain <= 0) { endGame(false, 'timeout'); return; }
+      }
+      updateHud();
+    }, 1000);
+  }
+
+  function onBoardClick(e) {
+    if (state.over || state.animating) return;
+    var el = e.target.closest ? e.target.closest('.tile') : null;
+    if (!el || !boardEl.contains(el)) return;
+    var id = parseInt(el.dataset.id, 10);
+    var tile = state.tiles[id];
+    if (!tile || tile.removed) return;
+
+    if (isCovered(tile)) {
+      sfxBad();
+      el.classList.add('shake');
+      setTimeout(function () { el.classList.remove('shake'); }, 320);
+      toast('这张被压住了，先解救上面的小伙伴～');
+      return;
+    }
+
+    sfxSelect();
+    var fromRect = el.getBoundingClientRect();
+
+    // 从牌桌移除，插入卡槽（插到相同图标后面，方便凑三连）
+    tile.removed = true;
+    var pos = state.slots.length;
+    for (var i = state.slots.length - 1; i >= 0; i--) {
+      if (state.slots[i].icon === tile.icon) { pos = i + 1; break; }
+    }
+    state.slots.splice(pos, 0, tile);
+    state.newSlotIdx = pos;
+    state.animating = true;
+    render();
+
+    flyToSlot(fromRect, pos, tile.icon, function () {
+      state.newSlotIdx = -1;
+      renderSlots();
+      resolveSlots();
+    });
+  }
+
+  function resolveSlots() {
+    state.animating = false;
+    var s = state.slots, m = -1;
+    for (var i = 0; i + 2 < s.length; i++) {
+      if (s[i].icon === s[i + 1].icon && s[i].icon === s[i + 2].icon) { m = i; break; }
+    }
+
+    if (m >= 0) {
+      sfxMatch();
+      [m, m + 1, m + 2].forEach(function (k) {
+        var el = document.querySelector('.slotcell[data-idx="' + k + '"] .slot-tile');
+        if (el) el.classList.add('removing');
+      });
+      state.animating = true;
+      setTimeout(function () {
+        state.slots.splice(m, 3);
+        state.animating = false;
+        render();
+        if (boardLeft() === 0 && state.slots.length === 0) endGame(true);
+      }, 280);
+      return;
+    }
+
+    if (state.slots.length >= MAX_SLOTS) {
+      endGame(false, 'full');
+    }
+  }
+
+  function doShuffle(free) {
+    if (!free) {
+      state.shuffles--;
+      if (state.shuffles < 0) state.shuffles = 0;
+    }
+    var alive = state.tiles.filter(function (t) { return !t.removed; });
+    var icons = shuffleArr(alive.map(function (t) { return t.icon; }));
+    alive.forEach(function (t, i) { t.icon = icons[i]; });
+    render();
+  }
+
+  function useHint() {
+    if (state.over || state.animating || state.hints <= 0) return;
+    var free = freeTiles();
+    if (!free.length) return;
+    state.hints--;
+    updateHud();
+
+    // 优先提示：场上能跟卡槽里凑成三连的牌
+    var slotCnt = {};
+    state.slots.forEach(function (t) { slotCnt[t.icon] = (slotCnt[t.icon] || 0) + 1; });
+    var bestIcon = null;
+    for (var i = free.length - 1; i >= 0; i--) {
+      if ((slotCnt[free[i].icon] || 0) >= 2) { bestIcon = free[i].icon; break; }
+    }
+    var targets;
+    if (bestIcon) {
+      targets = free.filter(function (t) { return t.icon === bestIcon; }).slice(0, 1);
+      toast('💡 点它就能三连！');
+    } else {
+      var cnt = {};
+      free.forEach(function (t) { cnt[t.icon] = (cnt[t.icon] || 0) + 1; });
+      var ic = null;
+      Object.keys(cnt).forEach(function (k) { if (!ic && cnt[k] >= 2) ic = k; });
+      if (!ic) ic = free[0].icon;
+      targets = free.filter(function (t) { return t.icon === ic; }).slice(0, 2);
+    }
+    targets.forEach(function (t) {
+      var el = boardEl.querySelector('[data-id="' + t.id + '"]');
+      if (el) { el.classList.add('hint'); setTimeout(function(){ el.classList.remove('hint'); }, 2100); }
+    });
+    beep(1047, 0.15, 'sine', 0.15);
+  }
+
+  function endGame(win, reason) {
+    if (state.over) return;
+    state.over = true;
+    clearInterval(state.timerId);
+
+    var emoji = $('end-emoji'), title = $('end-title'), desc = $('end-desc'), main = $('btn-end-main');
+    var saveRow = $('end-save-row');
+
+    if (win) {
+      sfxWin();
+      saveRow.classList.remove('hidden');
+      var saveBtn = $('btn-save-score');
+      saveBtn.disabled = false;
+      saveBtn.textContent = '🏆 保存成绩';
+      $('name-input').disabled = false;
+      var lastName = '';
+      try { lastName = localStorage.getItem(NAME_KEY) || ''; } catch (e) {}
+      $('name-input').value = lastName;
+
+      if (state.levelIdx === 0) {
+        try { localStorage.setItem(SAVE_KEY, '1'); } catch (e) {}
+        emoji.textContent = '🎉';
+        title.textContent = '小羊获救了！';
+        desc.innerHTML = '用时 <b>' + fmt(state.elapsed) + '</b>，轻松拿捏！<br><br>⚠️ 警告：第二关是<b style="color:#ff7043">地狱模式</b><br>111 张牌 · 12 种动物 · 300 秒倒计时 · 7 格卡槽<br>据说只有 0.1% 的羊能通关……敢试试吗？';
+        main.textContent = '🔥 挑战地狱模式';
+        main.dataset.action = 'level2';
+      } else {
+        emoji.textContent = '👑';
+        title.textContent = '你…你竟然通关了地狱模式？！';
+        desc.innerHTML = '用时 <b>' + fmt(state.elapsed) + '</b><br>小羊们把你奉为传说级牧羊人 🐑🫡<br>全世界的羊都自由了！';
+        main.textContent = '🔄 再战一次';
+        main.dataset.action = 'level2';
+      }
+      renderLBInto('end-lb-list', state.levelIdx, 5, null);
+      $('end-lb-title').innerHTML = '<div class="lb-tab active" style="cursor:default">' + LEVELS[state.levelIdx].name + ' · TOP 5</div>';
+    } else {
+      sfxFail();
+      saveRow.classList.add('hidden');
+      $('end-lb-panel').classList.add('hidden');
+      if (reason === 'timeout') {
+        emoji.textContent = '⏰';
+        title.textContent = '时间到！';
+        desc.innerHTML = '小羊没能获救，它们在风中凌乱…🐑💨<br>地狱模式从不留情，再试一次？';
+      } else {
+        emoji.textContent = '💥';
+        title.textContent = '卡槽爆了！';
+        desc.innerHTML = '7 个卡槽塞满，没能凑出三连…<br>这就是<b style="color:#ff7043">地狱模式</b>的残酷 🩸<br><span style="font-size:13px;opacity:.75">（第一关输掉的话，建议重新检查视力 👀）</span>';
+      }
+      main.textContent = state.levelIdx === 0 ? '😤 不服，重来！' : '😤 不服，重来！';
+      main.dataset.action = 'retry';
+    }
+    if (win) $('end-lb-panel').classList.remove('hidden');
+    showScreen('screen-end');
+  }
+
+  /* ================= 排行榜 ================= */
+  function loadLB() {
+    try {
+      var d = JSON.parse(localStorage.getItem(LB_KEY));
+      if (d && d.l1 && d.l2) return d;
+    } catch (e) {}
+    return { l1: [], l2: [] };
+  }
+  function lbKey(idx) { return idx === 0 ? 'l1' : 'l2'; }
+
+  function saveScore(levelIdx, name, seconds) {
+    var lb = loadLB();
+    var d = new Date();
+    var entry = {
+      name: name || '无名羊客',
+      s: seconds,
+      d: d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate()
+    };
+    lb[lbKey(levelIdx)].push(entry);
+    lb[lbKey(levelIdx)].sort(function (a, b) { return a.s - b.s; });
+    lb[lbKey(levelIdx)] = lb[lbKey(levelIdx)].slice(0, 10);
+    try {
+      localStorage.setItem(LB_KEY, JSON.stringify(lb));
+      localStorage.setItem(NAME_KEY, entry.name);
+    } catch (e) {}
+    return entry;
+  }
+
+  function renderLBInto(containerId, levelIdx, limit, highlight) {
+    var box = $(containerId);
+    box.innerHTML = '';
+    var list = loadLB()[lbKey(levelIdx)].slice(0, limit || 10);
+    if (!list.length) {
+      var empty = document.createElement('div');
+      empty.className = 'lb-empty';
+      empty.textContent = '还没有人上榜，快来当第一个勇士！🐑';
+      box.appendChild(empty);
+      return;
+    }
+    var medals = ['🥇', '🥈', '🥉'];
+    list.forEach(function (e, i) {
+      var row = document.createElement('div');
+      row.className = 'lb-row' + (highlight && highlight.name === e.name && highlight.s === e.s ? ' me' : '');
+      var rank = document.createElement('span'); rank.className = 'lb-rank';
+      rank.textContent = medals[i] || (i + 1);
+      var name = document.createElement('span'); name.className = 'lb-name';
+      name.textContent = e.name;
+      var time = document.createElement('span'); time.className = 'lb-time';
+      time.textContent = fmt(e.s);
+      var date = document.createElement('span'); date.className = 'lb-date';
+      date.textContent = e.d;
+      row.appendChild(rank); row.appendChild(name); row.appendChild(time); row.appendChild(date);
+      box.appendChild(row);
+    });
+  }
+
+  /* ================= 页面切换 ================= */
+  function showScreen(id) {
+    ['screen-title', 'screen-game', 'screen-end', 'screen-lb'].forEach(function (s) {
+      $(s).classList.toggle('hidden', s !== id);
+    });
+  }
+
+  function refreshTitle() {
+    var passed = false;
+    try { passed = localStorage.getItem(SAVE_KEY) === '1'; } catch (e) {}
+    var btn = $('btn-start-l2');
+    btn.disabled = !passed;
+    $('l2-lock-tip').textContent = passed ? '⚠️ 非战斗人员请迅速撤离' : '通关第一关后解锁';
+  }
+
+  /* ================= 事件绑定 ================= */
+  var lbTabIdx = 0;
+
+  $('btn-start-l1').addEventListener('click', function () { sfxSelect(); startLevel(0); });
+  $('btn-start-l2').addEventListener('click', function () {
+    if (this.disabled) return;
+    sfxSelect(); startLevel(1);
+  });
+  $('board').addEventListener('click', onBoardClick);
+  $('btn-shuffle').addEventListener('click', function () {
+    if (state.over || state.animating || state.shuffles <= 0) return;
+    sfxSelect(); toast('🔀 洗牌！'); doShuffle(false);
+  });
+  $('btn-hint').addEventListener('click', useHint);
+  $('btn-quit').addEventListener('click', function () {
+    state.over = true;
+    clearInterval(state.timerId);
+    refreshTitle(); showScreen('screen-title');
+  });
+
+  $('btn-end-main').addEventListener('click', function () {
+    var act = this.dataset.action;
+    if (act === 'level2') startLevel(1);
+    else if (act === 'retry') startLevel(state.levelIdx);
+    else { refreshTitle(); showScreen('screen-title'); }
+  });
+  $('btn-end-home').addEventListener('click', function () {
+    refreshTitle(); showScreen('screen-title');
+  });
+
+  $('btn-save-score').addEventListener('click', function () {
+    var name = $('name-input').value.trim() || '无名羊客';
+    var entry = saveScore(state.levelIdx, name, state.elapsed);
+    sfxMatch();
+    toast('🏆 已上榜：' + entry.name + ' · ' + fmt(entry.s));
+    this.disabled = true;
+    this.textContent = '✅ 已保存';
+    $('name-input').disabled = true;
+    renderLBInto('end-lb-list', state.levelIdx, 5, entry);
+  });
+
+  $('btn-open-lb').addEventListener('click', function () {
+    sfxSelect();
+    renderLBInto('lb-list', lbTabIdx, 10, null);
+    showScreen('screen-lb');
+  });
+  $('btn-lb-back').addEventListener('click', function () {
+    refreshTitle(); showScreen('screen-title');
+  });
+  $('lb-tab-0').addEventListener('click', function () {
+    lbTabIdx = 0;
+    this.classList.add('active'); $('lb-tab-1').classList.remove('active');
+    renderLBInto('lb-list', 0, 10, null);
+  });
+  $('lb-tab-1').addEventListener('click', function () {
+    lbTabIdx = 1;
+    this.classList.add('active'); $('lb-tab-0').classList.remove('active');
+    renderLBInto('lb-list', 1, 10, null);
+  });
+
+  window.addEventListener('resize', function () {
+    if (!$('screen-game').classList.contains('hidden')) fitBoard();
+  });
+
+  refreshTitle();
+})();
+</script>
+</body>
+</html>
